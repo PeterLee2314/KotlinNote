@@ -595,6 +595,6 @@ values.forEach(::println)
 #### Filter & Map
 which is same as Stream API in Java
 ```
-var even = values.filter {e -> e%2 ==0} // too long
-var even = values.filter{it%2==0}.forEach(::println) // better
+values.filter {e -> e%2 ==0} // too long
+values.filter{it%2==0}.forEach(::println) // better
 ```
