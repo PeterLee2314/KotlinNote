@@ -1,10 +1,13 @@
 package basic
 
+import java.lang.Exception
+import java.lang.NumberFormatException
+import java.math.BigInteger
 import java.util.*
 
 fun main(args : Array<String>) {
     println("Hello world")
-    var alien = Alien()
+    var alien = Alien("Bobby")
     alien.name = "Bob"
     println("Name is : ${alien.name}")
 
@@ -62,9 +65,54 @@ fun main(args : Array<String>) {
     }
 
 
+    // String to int
+
+    var str : String = "4"
+    var str2Num : Int = str.toInt()
+    try {
+
+    }catch (e : Exception) {
+
+    } finally {
+
+    }
+
+    // Try as an Expression
+    var numCatch : Int = try {
+        str.toInt()
+    }catch (e : NumberFormatException) {
+        0
+    }
+
+    var a1 = Alien("Bobby")
+    a1.skills = "Java"
+    a1.show()
+
+    var a2 = Alien("Bobby")
+    a2.skills = "Kotlin"
+    a2.show()
+
+    var a3 = a1 + a2 //
+    a3.show()
+
+    var fact = factorial2(BigInteger("70000"), BigInteger.ONE)
+    println(fact)
 }
 fun peterSpeak(a : Int , b : Int): Int {
     return a + b
 }
 fun max(a : Int, b : Int) : Int = if(a > b) a else b
 
+fun factorial (a : BigInteger) : BigInteger {
+    if(a == BigInteger.ZERO) {
+        return BigInteger("1");
+    }else
+    return a * factorial(a - BigInteger.ONE)
+}
+
+tailrec fun factorial2 (a : BigInteger, result : BigInteger) : BigInteger {
+    if(a == BigInteger.ZERO) {
+        return result;
+    }else
+        return factorial2(a - BigInteger.ONE, a * result)
+}
