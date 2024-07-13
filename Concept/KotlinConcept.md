@@ -598,3 +598,323 @@ which is same as Stream API in Java
 values.filter {e -> e%2 ==0} // too long
 values.filter{it%2==0}.forEach(::println) // better
 ```
+
+#### forEach in array loop
+```
+    logs.forEach { log ->
+        when (log) {
+            "../" -> counter = maxOf(0, counter - 1)
+            "./" -> Unit // Do nothing
+            else -> counter++
+        }
+    }
+```
+
+#### Unit in when 
+Unit is mean do nothing, particularly useful when you want a condition but do nothing in "when" expression
+
+#### max, maxOf, min, minOf
+max == maxOf
+min == minOf
+
+#### one line function
+```
+fun start(): String = "OK"
+```
+equvalent to
+```
+fun start(): String {
+    return "OK"
+}
+```
+
+#### Default and Named Arguments
+fun abc(i : Int = 5) // default
+fun abc(i : Int = 5, j : Int = 2, k : String) 
+to use Named simply abc("ab") put inside k directly
+OR abc(k = "ab", j = 3) // use default i = 5
+
+#### Overloading by default and named argument
+fun foo(name: String, number: Int = 42, toUpperCase: Boolean = false) =
+(if (toUpperCase) name.uppercase() else name) + number
+
+so all function is valid 
+```
+fun useFoo() = listOf(
+        foo("a"),
+        foo("b", number = 1),
+        foo("c", toUpperCase = true),
+        foo(name = "d", number = 2, toUpperCase = true)
+)
+```
+
+
+#### String literals Escaped string("") multi-line(""") 
+remove trim prefix by trimMargin() , or remove trim by trimIndent
+By default, a pipe symbol | is used as margin prefix, 
+but you can choose another character and pass it as a parameter, like trimMargin(">").
+```
+val text = """
+    |Tell me and I forget.
+    |Teach me and I remember.
+    |Involve me and I learn.
+    |(Benjamin Franklin)
+    """.trimMargin("#")
+    
+    output = 
+    Tell me and I forget.
+    Teach me and I remember.
+    Involve me and I learn.
+    (Benjamin Franklin)
+```
+
+```
+val withoutIndent =
+    """
+            ABC
+            123
+            456
+        """.trimIndent()
+println(withoutIndent) // ABC\n123\n456
+```
+
+#### $, ${}, index$
+to reuse the varaible , by %d -> add index and $ sign -> %1\$d
+
+// Formats a negative number to be enclosed in parentheses, then repeats the same number in a different format (without parentheses) using `argument_index$`.
+val negativeNumberInParentheses = String.format("%(d means %1\$d", -31416)
+println(negativeNumberInParentheses)
+//(31416) means -31416
+
+// Formats an integer, adding leading zeroes to reach a length of seven characters
+val integerNumber = String.format("%07d", 31416)
+println(integerNumber)
+// 0031416
+
+// Formats a floating-point number to display with a + sign and four decimal places
+val floatNumber = String.format("%+.4f", 3.141592)
+println(floatNumber)
+// +3.1416
+
+// Formats two strings to uppercase, each taking one placeholder
+val helloString = String.format("%S %S", "hello", "world")
+println(helloString)
+// HELLO WORLD
+
+
+##### String template with Regex
+```
+fun main() {
+    val pattern = """\d{2} July \d{4}""".toRegex()
+    val date = "25 July 2022"
+
+    if (pattern.matches(date)) {
+        println("Valid date format: $date")
+    } else {
+        println("Invalid date format: $date")
+    }
+
+    val modifiedDate = date.replace(pattern, "01 August 2023")
+    println("Modified date: $modifiedDate")
+}
+``` 
+
+#### null safety
+To perform a certain operation only for non-null values, you can use the safe call operator together with let
+```
+val listWithNulls: List<String?> = listOf("Kotlin", null)
+for (item in listWithNulls) {
+    item?.let { println(it) } // prints Kotlin and ignores null
+}
+```
+
+Safe calls are useful in chains. For example, Bob is an employee who may be assigned to a department (or not). 
+That department may in turn have another employee as a department head. 
+To obtain the name of Bob's department head (if there is one), you write the following:
+```
+bob?.department?.head?.name
+```
+Such a chain returns null if any of the properties in it is null.
+##### Nullable receiver
+toString is defined on nullable receiver, it return String "null"
+```
+val person: Person? = null
+logger.debug(person.toString()) // Logs "null", does not throw an exception
+
+```
+
+receive null string and perform operation by (?.toString())
+```
+var timestamp: Instant? = null
+val isoTimestamp = timestamp?.toString() // Returns a String? object which is `null`
+if (isoTimestamp == null) {
+   // Handle the case where timestamp was `null`
+}
+```
+##### Elvis operator
+```
+val l: Int = if (b != null) b.length else -1
+```
+Elvis operator 
+give b.length if not null, else -1
+```
+val l : Int = b?.length ?: -1  
+```
+##### not-null assertion operator (!!)
+convert any value to NON-NULLABLE, so if null, throw EXCEPTION
+```
+val l = b!!.length
+```
+
+##### Safe casts (as?)
+Regular casts may result in a ClassCastException if the object is not of the target type.
+Another option is to use safe casts that return null if the attempt was not successful:
+```
+val aInt: Int? = a as? Int
+```
+
+##### Conclusion
+- Add after declare type, eg Int?, String? , Student?
+- Add after variable eg b?.length
+- Elvis operator, ?: , if null perform operation after (?:) 
+  - eg val name = node.getName() ?: throw IllegalArgumentException("name expected")
+- When value is nullable, their method should add ? eg var b : String? , so println(b?.length)
+- with safe casts add (?) after (as)
+- any null occur will not perform in chain, eg client?.personalInfo?.email
+  - mean client class is not null and personalInfo variable class is not null, then get the email
+Good example of non null
+```
+val email = client?.personalInfo?.email
+if(email != null && message != null) {
+    mailer.sendMessage(email, message)
+}
+
+Example 2
+data class Address(val street: String, val city: String, val zipCode: String)
+data class User(val name: String, val address: Address?)
+
+fun main() {
+    val user: User? = User("John Doe", null)
+
+    val city = user?.address?.city
+    println("City: $city")
+
+    val zipCodeLength = user?.address?.zipCode?.length
+    println("Zip Code Length: $zipCodeLength")
+}
+
+```
+
+#### Nothing type
+The throw expression has the type Nothing. 
+This type has no values and is used to mark code locations that can never be reached.
+```
+fun fail(message: String): Nothing {
+    throw IllegalArgumentException(message)
+}
+```
+Nothing type also happen when dealing with type inference
+when without specific type
+Nothing?, has exactly one possible value, which is null
+```
+val x = null           // 'x' has type `Nothing?`
+val l = listOf(null)   // 'l' has type `List<Nothing?>
+```
+
+#### High order function
+A higher-order function is a function that takes functions as parameters, or returns a function.
+For example , fold
+the fold function accept two parameter (initial, combine)
+combine is a FUNCTION which take (R,T) return R
+therefore we can use lambda to define the combine function by our self which is
+{acc, nextElement -> acc + nextElement} , which in our code will become custom combine function
+
+ALSO
+fun <T,R> is for declaring the parameter used in this function
+Collection<T> is the type of which T type can use the .fold method
+because for example , Collection<Int> which Colletion could be an ArrayList and <Integer> type
+```
+fun <T, R> Collection<T>.fold(
+    initial: R,
+    combine: (acc: R, nextElement: T) -> R
+): R {
+    var accumulator: R = initial
+    for (element: T in this) {
+        accumulator = combine(accumulator, element)
+    }
+    return accumulator
+}
+```
+
+```
+val items = listOf(1, 2, 3, 4, 5)
+
+// Lambdas are code blocks enclosed in curly braces.
+items.fold(0, { 
+    // When a lambda has parameters, they go first, followed by '->'
+    acc: Int, i: Int -> 
+    print("acc = $acc, i = $i, ") 
+    val result = acc + i
+    println("result = $result")
+    // The last expression in a lambda is considered the return value:
+    result
+})
+
+// Parameter types in a lambda are optional if they can be inferred:
+val joinedToString = items.fold("Elements:", { acc, i -> acc + " " + i })
+
+// Function references can also be used for higher-order function calls:
+val product = items.fold(1, Int::times)
+```
+
+#### Lambda
+collection.any({it % 2 == 0})
+is same as
+collection.any {it % 2 == 0} 
+also valid
+collection.any({e -> e % 2 == 0})
+
+##### How to return a function type?
+- a lambda expression: { a, b -> a + b }
+- an anonymous function: fun(s: String): Int { return s.toIntOrNull() ?: 0 }
+- a top-level, local, member, or extension function: ::isOdd, String::toInt,
+- a top-level, member, or extension property: List<Int>::size,
+- a constructor: ::Regex
+- Bound function and property references 
+```
+val numberRegex = "\\d+".toRegex()
+println(numberRegex.matches("29"))
+
+val isNumber = numberRegex::matches
+println(isNumber("29"))
+```
+
+##### Normal class
+Normal class
+class MyClass : MySuperClass(), MyInterface, Serializable
+
+
+IntTransformer implement the function type (Int) -> Int 
+when override invoke function, it allow directly call the class with value as function
+
+```
+class IntTransformer : (Int) -> Int {
+    override operator fun invoke(value: Int): Int {
+        // Transformation logic goes here
+        // Modify the 'value' and return the transformed result
+        return value * 2
+    }
+}
+
+fun main() {
+    val transformer = IntTransformer()
+
+    val result = transformer(5)
+    println("Transformed value: $result")
+}
+```
+
+This is good without write an method
+目的
+大概是需要一開始實體物這個物件
+想要省去一個function call的撰寫
