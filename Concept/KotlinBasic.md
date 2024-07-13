@@ -472,3 +472,10 @@ sealed Error(message : String) : Result(message) {
     class RecoverableError (...) : Error
     class NonRecoverableError (...) : Error
 }
+
+####
+this is
+as
+by
+Flow<List<String>>
+flow { emit(myData)}
