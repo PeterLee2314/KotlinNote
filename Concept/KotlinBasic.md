@@ -473,9 +473,515 @@ sealed Error(message : String) : Result(message) {
     class NonRecoverableError (...) : Error
 }
 
+####  "Function Types" or "Function Literals with Receiver."
+declare a function inside parameter
+This allows you to define behavior or actions that will be executed inside the compare function but are provided from outside 
+as a lambda expression. 
+The lambda expression acts as a callback function that gets invoked inside the compare function.
+
+When the compare function is called, it adds a and b and passes the result to the sayHello callback. 
+In this case, the lambda expression println("answer is $it") is executed, and the value of it represents the sum of a and b.
+```
+    val sayHi : (Int) -> Unit = {
+        println(it)
+    }
+OR
+    val sayHi : (Int) -> Unit = { e->
+        println(e)
+    }
+OR IF MORE THAN 1 Parameter (need declare name)
+    val sayHi : (Int, Int) -> Unit = { a,b ->
+        println(a)
+        println(b)
+    }
+
+```
+
+
+predefine and outside declare (function parameter must be last)
+```
+fun main(args : Array<String>) {
+    compare(2,3) {
+        // override sayHello
+        println("answer is $it")
+    }
+}
+fun compare(a : Int, b: Int, sayHello : (Int) -> Unit) {
+    sayHello(a+b)
+}
+```
+
+
+outside:
+```
+fun compare(a: String, b: String): Boolean = a.length < b.length
+```
+inside:
+```
+val funcMultiply = {a: Int, b: Int -> a*b}
+```
+#### Extension Function (make new function)
+Kotlin provides the ability to extend a class with new functionality without
+having to inherit from the class
+eg
+```
+fun Int.increment(): Int {
+    return this+1
+}
+fun Boolean.invert(): Boolean {
+    return xor(true) // a xor true = !a, by the conditional inversion property of xor.
+}
+```
+
+#### Domain Specific Language (DSL)
+Kotlin DSL lets you define a specific "language" using an extension
+function under the hood. Useful for Builders, UI Layouts, and other
+situations that have a standard structure.
+```
+fun doSomething(config: DoSomethingConfig.() -> Unit) {
+	...
+}
+
+doSomething {
+	configVar1 = ...
+    configVar2 = ...
+    if(condition) configVar3 = ...
+}
+```
+####  "Function Types" or "Function Literals with Receiver." 
+Higher order functions are structures that getting function
+parameters and return functions.
+```
+fun hello(operator: () -> Unit) {
+    operator()
+}
+```
+
+Last line is the return type
+More customized function
+the function inside behaviour is set by outside 
+sayHello is customizable, which you can make any changes of it to produce different result
+```
+fun compare(a : Int, b: Int, sayHello : (Int) -> Unit) {
+    sayHello(a+b)
+}
+```
+#### What is receiver? (with Receiver, no need to use "it")
+Any block of code in Kotlin may have a type (or even multiple types) as a receiver 
+So outside that block of code, have a "receiver" 
+receiver can be function or properties
+Available in that block of code WITHOUT qualifying IT 沒有限定它。
+eg (Int) -> Long {it.toLong()} // work , but name shadowed happended in future development
+Q: what if in future, we need to use it again? because of nested block of DSL html{ it.body {...}}}
+```
+// Int as Parameter, so use it
+    val intToLong : (Int) -> Long = {
+        it.toLong()
+    }
+// Int as Receiver
+    val intToLong : Int.() -> Long = {
+        toLong()
+    }
+// Int as Receiver with String as parameter prodcuing a Long
+    Int.(String) -> Long  
+    
+Int.() -> Long  // taking an integer as receiver producing a long
+String.(Long) -> String // taking a string as receiver and long as parameter producing a string
+GUI.() -> Unit // taking a GUI as receiver and producing nothing
+```
+
+#### inline / noinline / crossinline
+在重構(Refactor)裡有個技巧就叫inline。例如我們在main呼叫了hello這個function。
+```
+fun main() {
+   hello()
+}
+
+fun hello(){
+   println("hello")
+}
+```
+你可以在hello上按右鍵 → Refactor → Inline function，就會把hello這個function收回去變成：
+```
+fun main() {
+    println("hello")
+}
+```
+在一個function前面加上inline，表示在編譯到Java程式碼時會把這個function收回去。
+你就會看到main裡面並沒有再去呼叫hello這個function了，而是直接執行你原本在hello function裡做的事。
+```
+
+public static final void main() {
+   int $i$f$hello = false;
+   String var1 = "hello";
+   boolean var2 = false;
+   System.out.println(var1);
+}
+
+public static final void hello() {
+   int $i$f$hello = 0;
+   String var1 = "hello";
+   boolean var2 = false;
+   System.out.println(var1);
+}
+```
+但如果是一般的 function 這樣寫，IDE會警告：
+
+Expected performance impact from inlining is insignificant. Inlining works best for functions with parameters of functional types.
+
+意思就是除了在 functional type 裡使用，其實沒有太大的好處。建議你不要這樣使用。
+
+那麼在 lambda 使用的好處是什麼呢？我們來看下面這段程式碼，寫了一個high order function 叫 hello。
+```
+fun hello(operator: () -> Unit) {
+    operator()
+}
+```
+
+在一個inline function，如果有其中一個function參數不想被 inline，則在前面加上noinline。
+
+下方程式碼因為hello有使用inline，在第4行我們加了 return，會造成如下方程式碼的2個地方(第6行、第13行)不會再往下執行，這跟一般對於return的定義會不太一樣。
+```
+fun main() {
+    hello {
+        println("A")
+        return
+    }
+    //這裡以下不會被執行到
+    println("main_end")
+}
+
+inline fun hello(operator: () -> Unit) {
+    println("hello")
+    operator()
+    //這裡以下不會被執行到
+    println("hello2")
+}
+```
+我們可以加上crossinline，這樣就會強迫你只能使用return@hello的寫法，如果直接使用return，IDE就會跳出錯誤來跟你說不能這樣寫。
+```
+fun main() {
+    hello {
+        println("A")
+	//如果只寫return，會跳出error
+        return@hello
+    }
+    //這裡以下不會被執行到
+    println("main_end")
+}
+
+inline fun hello(crossinline operator: () -> Unit) {
+    println("hello")
+    operator()
+    //這裡以下不會被執行到
+    println("hello2")
+}
+```
+#### this Expression
+Qualified this "this@A"
+Implicit this "this"
+
+Qualified this, can access "class" , "extension function", "labeled function literal with receivers"
+by "this@label"
+```
+class A { // implicit label @A
+    inner class B { // implicit label @B
+        fun Int.foo() { // implicit label @foo
+            val a = this@A // A's this
+            val b = this@B // B's this
+
+            val c = this // foo()'s receiver, an Int
+            val c1 = this@foo // foo()'s receiver, an Int
+
+            val funLit = lambda@ fun String.() {
+                val d = this // funLit's receiver, a String
+            }
+
+            val funLit2 = { s: String ->
+                // foo()'s receiver, since enclosing lambda expression
+                // doesn't have any receiver
+                val d1 = this
+            }
+        }
+    }
+}
+```
+
+Implicit this (with this.xxx() , it use class function)
+```
+fun printLine() { println("Top-level function") }
+
+class A {
+    fun printLine() { println("Member function") }
+
+    fun invokePrintLine(omitThis: Boolean = false)  { 
+        if (omitThis) printLine()
+        else this.printLine()
+    }
+}
+
+A().invokePrintLine() // Member function
+A().invokePrintLine(omitThis = true) // Top-level function
+```
+#### receiver(this) receiver parameter(it)
+lamdba (code: String.(Int) -> Unit)
+Here the code lambda has a reciever (of type String) and a single parameter (of type Int). So you can mix this and it
+
+```
+fun foo(code: String.(Int) -> Unit){
+    "test".code(5)
+}
+
+fun main(){
+    foo {
+        println(this) // test (that String)
+        println(it) //  5 (that Int)
+    }
+}
+```
+#### Extension functions (extend from the class and make new function)
+Kotlin provides the ability to extend a class or an interface with new functionality without having to 
+inherit from the class or use design patterns such as Decorator. 
+This is done via special declarations called extensions.
+
+To declare an extension function, prefix its name with a receiver type, which refers to the type being extended
+eg we want the "MutableList" class to have a function "swap"
+MutableList<T>.swap(...) (this == MutalbeList , parameter = ... = it)
+
+The this keyword inside an extension function corresponds to the receiver object (the one that is passed before the dot). 
+Now, you can call such a function(that "swap" function) on any MutableList<Int>
+```
+fun MutableList<Int>.swap(index1: Int, index2: Int) {
+    val tmp = this[index1] // 'this' corresponds to the list
+    this[index1] = this[index2]
+    this[index2] = tmp
+}
+```
+Extensions are resolved statically
+We get answer "Shape" not "Rectangle"
+because "the function called only depend on the parameter type which is s : Shape"
+```
+open class Shape
+class Rectangle: Shape()
+
+fun Shape.getName() = "Shape"
+fun Rectangle.getName() = "Rectangle"
+
+fun printClassName(s: Shape) {
+    println(s.getName())
+}
+
+printClassName(Rectangle())
+```
+If a class has a member function, and an extension function is defined which has the same receiver type,
+the same name, and is applicable to given arguments, the member always wins. For example:
+it printed "Class method", which original class always win
+```
+class Example {
+    fun printFunctionType() { println("Class method") }
+}
+
+fun Example.printFunctionType() { println("Extension function") }
+
+Example().printFunctionType()
+```
+BUT, Its okay to have overloading
+which fun Example.printFunctionType(i : Int) { println("Extension function $i") } // have accept (Int) , its valid
+##### Nullable receiver
+Its okay to use Any as Receiver , and Null as Receiver too, but in case compiler error, we need null check
+```
+fun Any?.toString(): String {
+    if (this == null) return "null"
+    // After the null check, 'this' is autocast to a non-nullable type, so the toString() below
+    // resolves to the member function of the Any class
+    return toString()
+}
+```
+
+#### Getter and Setters
+Full syntax for declaring a "var" property is as follows:
+```
+var <propertyName>[: <PropertyType>] [= <property_initializer>]
+    [<getter>]
+    [<setter>]
+```
+val only have getter, no setter
+```
+can omit the property type if it can inferred from the getter
+class Rectangle() {
+    val width: Int = 100
+    val height: Int = 50
+    val area: Int // property type is optional since it can be inferred from the getter's return type
+        get() = this.width * this.height
+    val area2 get() = this.width * this.height
+
+}
+```
+
+##### @Inject (its Dependency Injection)
+
+If you need to annotate an accessor or change its visibility,
+but you don't want to change the default implementation, 
+you can define the accessor without defining its body:
+```
+// make setter private, but public getter, rather than totally private var
+// impossible to make property getter visiblity Stronger than setter, just use private,protected var directly
+var setterVisibility: String = "abc"
+    private set // the setter is private and has the default implementation
+
+var setterWithAnnotation: Any? = null
+    @Inject set // annotate the setter with Inject (this will inject the object reference automatically if exists)
+```
+
+The initializer, getter, and setter are optional. 
+The property type is optional if it can be inferred from the initializer or the getter's return type, as shown below:
+
+#### Accessor
+interface Accessor<out V>
+Represents a property accessor, which is a get or set method declared alongside the property.
+A backing field will be generated for a property if it uses the default implementation of at least one of the accessors (1),
+or if a custom accessor references it through the field identifier.
+(1)
+```
+// This is the default implementation (implcitly)
+var myProperty: Int = 0
+    get() = field // we have field here, because we just use the default implementation
+    set(value) {
+        field = value
+    }
+// If we want to use it, just put "field" inside it, it will detect
+var myProperty: String = "Hello"
+    get() {
+        println("Getting property value")
+        return field
+    }
+    set(value) {
+        println("Setting property value")
+        field = value
+    }
+// Otherwise, it will not generate "field"
+val isEmpty: Boolean
+    get() = this.size == 0  // we didnt use field so will not generate it
+```
+#### IN KOTLIN whenever you refer to the property, you're calling the accessor method, not accessing the field directly.
+#### Backing fields (field == the variable itself)
+properties (variable inside class) , parameter (variable declared inside fun())
+hold its value in memory, originally we simply put value inside the field, now we have Condition 
+to fill only when the value is > 0
+```
+    var age2 = 0 // the init value will not trigger the setter
+        set(value) {
+            if (value > 0) {
+                field = value
+            }
+        }
+```
+
+field will not even generated, because we not even use it
+there would be no point in generating a field, because it would never be used!
+Kotlin recognises this and generates only the accessor method(s).
+```
+val myProperty: Int
+    get() = someOtherObject.someOtherProperty
+    
+val myProperty: Int = 13
+    get() = field + 15 // answer = 13 + 15 = 28 
+```
+
+#### Backing properties (think as var's parameter  OR shadowing other property)
+the "table" val is having properties "_table" and use that "_table" to perform operation
+```
+private var _table: Map<String, Int>? = null
+public val table: Map<String, Int>
+    get() {
+        if (_table == null) {
+            _table = HashMap() // Type parameters are inferred
+        }
+        return _table ?: throw AssertionError("Set to null by another thread")
+    }
+```
+
+there's no reason to do Backing properties when we want a private setter property:
+```
+private var _word = "test"
+val word: String   //simply making word as a getter for _word, so the setter cant make changes to _word
+   get() = _word
+   
+Because you can just do this:
+
+var word = "test"
+    private set 
+```
+#### Extension properties (Only able to use when getter, setter implicitly provided)
+Since extensions do not actually insert members into classes,
+there's no efficient way for an extension property to have a backing field.
+This is why initializers are not allowed for extension properties. 
+Their behavior can only be defined by explicitly providing getters/setters.
+
+rather than fun, we make variable
+eg var, val
+```
+val <T> List<T>.newSize: Int
+    get() = size - 1
+```
+
+#### typealias
+```
+   val bothType : StringAndInt = {
+        a,b->
+        println("string:$a int:$b")
+    }
+    // Equivalent
+    val bothType2 : (String,Int) -> Unit = {
+        a,b ->
+        println("string:$a int:$b")
+    }
+
+typealias StringAndInt = (String, Int) -> Unit
+```
+####  lambda expression (->) & anonymous function ({})
+a lambda expression: { a, b -> a + b },
+an anonymous function: fun(s: String): Int { return s.toIntOrNull() ?: 0 }
+eg map {} , we dont need ()
+
+#### Int and Int?
+Int? cant compare with Int 
+eg var target : Int? = null
+if(target > 5) //invalid Type mismatch.
+
+#### When (in, is, enum)
+is: check is it that TYPE
+in : is that INT or within range
+
+```
+// use is (match the type)
+fun hasPrefix(x: Any) = when(x) {
+    is String -> x.startsWith("prefix")
+    else -> false
+}
+// more than 1 value is match
+when (x) {
+    0, 1 -> print("x == 0 or x == 1")
+    else -> print("otherwise")
+}
+when (x) {
+    s.toInt() -> print("s encodes x")
+    else -> print("s does not encode x")
+}
+
+// capture return subject
+fun Request.getBody() =
+    when (val response = executeRequest()) {
+        is Success -> response.body
+        is HttpError -> throw HttpException(response.status)
+    }
+```
+
 ####
 this is
 as
 by
 Flow<List<String>>
 flow { emit(myData)}
+
+
