@@ -433,7 +433,7 @@ fun flying() {
 
 ```
 
-#### sealed class
+#### sealed class (cant instanitate ,but instantiate with subclass)
 Sealed Class (if user define / define it in main) OR Enum class (if pre-define)
 enum not allow property in enum but by constructor only with value
 ```
@@ -976,8 +976,573 @@ fun Request.getBody() =
         is HttpError -> throw HttpException(response.status)
     }
 ```
+#### Expression
+An expression consists of variables, operators, methods calls etc that produce a single value.
+A variable declaration can not be an expression (var a = 100)
+Assigning a value is not an expression (b = 15)
+A class declaration is not an expression (class XYZ {….})
+In Kotlin every function returns a value atleast Unit, so every function is an expression.
+Expression :
+var mul = a * b
+sumOf(a,b)
+if,else
+##### Kotlin if expression –
+In Java, "if" is a statement but, in Kotlin "if" is an expression. 
+It is called an expression because it compares the values of a and b and returns the maximum value. 
+Therefore, in Kotlin there is no ternary operator (a>b)?a:b because it is replaced by the if expression.
+```
+var a = if (b > c) b else c
+var a = if (b > c) b else if( b > d) d else c
+```
+##### Label (for break, continue, return)
+loop , place "label" at front , eg loop@ for...
+lambda expression, place "label" at back , eg forEach abc@ {...} run abc@{...}
+```
+// only print one Hi 
+loop@ for (i in 1..100) {
+    println("Hi")
+    for (j in 1..100) {
+        if (...) break@loop
+    }
+}
+// 10 Hi (just by default break its okay because we want to break the j)
+for (i in 1..10) {
+    println("Hi")
+    loop@ for (j in 1..10) {
+        break@loop
+    }
+}
+```
 
-####
+##### Return
+forEach {lambda expression}
+inline (whole listOf...)
+only when its Lambda expression AND inline, then can make "label"
+```
+fun foo() {
+    listOf(1, 2, 3, 4, 5).forEach lit@{
+        if (it == 3) return@lit // local return to the caller of the lambda - the forEach loop
+        print(it)
+    }
+    print(" done with explicit label")
+}
+output: 1245 done with explicit label
+
+//Without lit@, it will only output 12
+```
+use Implicit label ("@forEach") , because we only return from the forEach
+```
+if (it == 3) return@forEach
+```
+OR use anonymous function , instead of Lambda expression from forEach{} to forEach(fun() {})
+then just use "return" directly
+```
+fun foo() {
+    listOf(1, 2, 3, 4, 5).forEach(fun(value: Int) {
+        if (value == 3) return  // local return to the caller of the anonymous function - the forEach loop
+        print(value)
+    })
+    print(" done with anonymous function")
+}
+```
+
+As we cover the loop with run (lambda expression) , so the return@loop will break the loop@
+```
+fun foo() {
+    run loop@{
+        listOf(1, 2, 3, 4, 5).forEach {
+            if (it == 3) return@loop // non-local return from the lambda passed to run
+            print(it)
+        }
+    }
+    print(" done with nested loop")
+}
+//Output : 12 done with nested loop
+```
+##### return with value return@a 1
+return@a 1, simply mean return to "label" "@a" with value 1
+```
+return@a 1
+```
+#### Exception (throw)
+Almost the same as Java, except Java :try catch is statement, but Kotlin :try catch is expression
+```
+val a: Int? = try { input.toInt() } catch (e: NumberFormatException) { null }
+```
+###### Compiler Time (Checked Exception)
+But Kotlin DONT HAVE CHECKED Exception , because too many repeated try,catch block
+So, when calling Kotlin code from Java,Swift OR Objective-C, use @Throws
+##### Nothing Type
+The throw expression has the type Nothing.
+This type has no values and is used to mark code locations that can never be reached. 
+In your own code, you can use Nothing to mark a function that never returns:
+
+```
+val s = person.name ?: throw IllegalArgumentException("Name required")
+
+fun fail(message: String): Nothing {
+    throw IllegalArgumentException(message)
+}
+```
+Nothing only have null value, if you deal with type inference (give type to var/val)
+```
+val x = null           // 'x' has type `Nothing?`
+val l = listOf(null)   // 'l' has type `List<Nothing?>
+```
+#### Class constructor and init
+Order is matter in class , so if there is some execution before init, will perform it first
+```
+class InitOrderDemo(name: String) {
+    val firstProperty = "First property: $name".also(::println)
+    
+    init {
+        println("First initializer block that prints $name")
+    }
+}
+output : 
+First property: hello
+First initializer block that prints hello
+
+if reverse it 
+class InitOrderDemo(name: String) {
+    init {
+        println("First initializer block that prints $name")
+    }
+    val firstProperty = "First property: $name".also(::println)
+}
+output:
+First initializer block that prints hello
+First property: hello
+```
+If the constructor has annotations or visibility modifiers, the constructor keyword is required and the modifiers go before it:
+``` 
+class Customer public @Inject constructor(name: String) { /*...*/ }
+```
+##### Override
+A member marked override is itself open, so it may be overridden in subclasses. If you want to prohibit re-overriding, use final:
+```
+open class Rectangle() : Shape() {
+    final override fun draw() { /*...*/ }
+}
+```
+You can also override a val property with a var property, but not vice versa.
+This is allowed because a val property essentially declares a get method, and overriding it as a var additionally declares a set method in the derived class.
+
+You can use override as part of the property declaration
+```
+interface Shape {
+    val vertexCount: Int
+}
+
+class Rectangle(override val vertexCount: Int = 4) : Shape // Always has 4 vertices
+
+class Polygon : Shape {
+    override var vertexCount: Int = 0  // Can be set to any number later
+}
+```
+If two draw() exist, to override it use super<className>.functionName()
+```
+open class Rectangle {
+    open fun draw() { /* ... */ }
+}
+
+interface Polygon {
+    fun draw() { /* ... */ } // interface members are 'open' by default
+}
+
+class Square() : Rectangle(), Polygon {
+    // The compiler requires draw() to be overridden:
+    override fun draw() {
+        super<Rectangle>.draw() // call to Rectangle.draw()
+        super<Polygon>.draw() // call to Polygon.draw()
+    }
+}
+```
+
+#### Class and parent execution order
+```
+open class Base(val name: String) {
+
+    init { println("Initializing a base class") }  // 1 
+
+    open val size: Int = 
+        name.length.also { println("Initializing size in the base class: $it") }  // 2 
+}
+
+class Derived(
+    name: String,
+    val lastName: String,
+) : Base(name.replaceFirstChar { it.uppercase() }.also { println("Argument for the base class: $it") }) {
+
+    init { println("Initializing a derived class") } // 3
+
+    override val size: Int =
+        (super.size + lastName.length).also { println("Initializing size in the derived class: $it") } // 4
+}
+/*
+Output:
+Constructing the derived class("hello", "world")
+Argument for the base class: Hello
+Initializing a base class
+Initializing size in the base class: 5
+Initializing a derived class
+Initializing size in the derived class: 10
+*/
+```
+##### Child class call / Innter Class call
+Child use super()
+```
+    override fun draw() {
+        super.draw()
+        println("Filling the rectangle")
+    }
+```
+Inner class use super@className.functionName()
+```
+class FilledRectangle: Rectangle() {
+    override fun draw() {
+        val filler = Filler()
+        filler.drawAndFill()
+    }
+
+    inner class Filler {
+        fun fill() { println("Filling") }
+        fun drawAndFill() {
+            super@FilledRectangle.draw() // Calls Rectangle's implementation of draw()
+            fill()
+            println("Drawn a filled rectangle with color ${super@FilledRectangle.borderColor}") // Uses Rectangle's implementation of borderColor's get()
+        }
+    }
+}
+```
+#### lateinit 
+lateinit really useful when DI or Test setup , so we want a non-null properties but not yet give value
+to check is it already declared 
+```
+if (foo::bar.isInitialized) {
+    println(foo.bar)
+}
+```
+#### lazy
+only execute the lazy block when textView needed to execute 
+```
+    private val textView: TextView by lazy {
+        println("this is lazy function block")
+        findViewById(R.id.textView) as TextView
+    }
+```
+如果呼叫了textView兩次，那還是只會呼叫一次lazy的function block一次，一但進行初始化後就不會再進行第二次初始化了：
+
+#### not null lambda function
+var initializer : (() -> T)? = initializer
+
+#### block body vs last line return
+fun <T> execute() : C<T> // is a block body , because of the ": C<T>" part , so last line need "return" keyword
+fun<T> execute() {
+    C<T>() // no need return keyword
+}
+
+#### <in T> vs <out T> vs <T>
+<out T> denotes that T is covariant.
+<in T> denotes that T is contravariant.
+<T> generics
+##### <out T>
+It seems plausible that a sequence of giraffes can be treated as a sequence of animals
+"Covariance" of an interface means that "if there is an implicit reference conversion from Giraffe to Animal 
+then there is also an implicit reference conversion from I<Giraffe> to I<Animal>.
+so Class<Type> is valid witth conversion of others
+
+#### Functional Interface (fun interface)
+interface Printer {
+fun print()
+}
+
+fun Printer(block: () -> Unit): Printer = object : Printer { override fun print() = block() }  // this is performed implicitly
+// return Printer
+// with putting an object with Printer type and declared {override fun print() = block() } 
+
+so 
+```
+fun interface Printer {
+    fun print()
+}
+
+documentsStorage.addPrinter(::Printer)  // this will add the Printer instance
+// ::Printer is the function reference which refers to the constructor of the Printer interface 
+
+```
+You can also simply rewrite the above using a type alias for a functional type:
+
+``` 
+typealias IntPredicate = (i: Int) -> Boolean
+
+val isEven: IntPredicate = { it % 2 == 0 }
+
+fun main() {
+println("Is 7 even? - ${isEven(7)}")
+}
+```
+However, functional interfaces and type aliases serve different purposes.
+Type aliases are just names for existing types – they don't create a new type, while functional interfaces do
+```
+typealias Name = String // Name can be used as type ,but  its not a new type call Name
+ val addition: MathOperation = MathOperation { a, b -> a + b } // while FI of MathOperation is a new type"MathOperation"
+```
+Type aliases can have only one member, while functional interfaces can have multiple non-abstract members and one abstract member. 
+Functional interfaces can also implement and extend other interfaces.
+#### dispatch receiver and an extension receiver
+An instance of a class in which the extension is declared is called a dispatch receiver (use instance)
+an instance of the receiver type of the extension method is called an extension receiver. (use class name)
+```
+make Extension Function
+fun Host.printConnectionString() {
+     //there actually using "this" to call Host properties
+}
+host.printConnectionString() // "host" is the Dispatch receiver
+
+Extension receiver // the implicit "this" is the Extension receiver
+
+```
+How to identify Connection's function & Extension receiver ?
+By this@Connection for the current class function, and directly use the function in extension function
+```
+class Connection {
+    fun Host.getConnectionString() {
+        toString()         // calls Host.toString()
+        this@Connection.toString()  // calls Connection.toString()
+    }
+}
+```
+You can make Extension Function open, (no modification on the original class)
+```
+open class Base { }
+
+class Derived : Base() { }
+
+open class BaseCaller {
+    open fun Base.printFunctionInfo() {
+        println("Base extension function in BaseCaller")
+    }
+
+    open fun Derived.printFunctionInfo() {
+        println("Derived extension function in BaseCaller")
+    }
+
+    fun call(b: Base) {
+        b.printFunctionInfo()   // call the extension function
+    }
+}
+
+class DerivedCaller: BaseCaller() {
+    override fun Base.printFunctionInfo() {
+        println("Base extension function in DerivedCaller")
+    }
+
+    override fun Derived.printFunctionInfo() {
+        println("Derived extension function in DerivedCaller")
+    }
+}
+
+fun main() {
+    BaseCaller().call(Base())   // "Base extension function in BaseCaller"
+    DerivedCaller().call(Base())  // "Base extension function in DerivedCaller" - dispatch receiver is resolved virtually
+    DerivedCaller().call(Derived())  // "Base extension function in DerivedCaller" - extension receiver is resolved statically
+}
+```
+
+#### Data classes
+data class User(val name: String, val age: Int)
+With the following function
+.equals()/.hashCode() pair.
+
+.toString() of the form "User(name=John, age=42)".
+
+.componentN() functions corresponding to the properties in their order of declaration.
+
+.copy() function (see below).
+
+Data classes can't be abstract, open, sealed, or inner
+The primary constructor must have at least one parameter.
+All primary constructor parameters must be marked as val or var.
+
+On the JVM, if the generated class needs to have a parameterless constructor, default values for the properties have to be specified
+data class User(val name: String = "", val age: Int = 0)
+
+Equals will only compare the properties inside () of the data class 
+```
+data class Person(val name: String) {
+    var age: Int = 0  // this will not be compared by equals() or ==   ALSO not copy 
+}
+val person1 = Person("John")
+val person2 = Person("John")
+person1.age = 10
+person2.age = 20
+
+println("person1 == person2: ${person1.equals(person2)}") // true
+println("person1 == person2: ${person1 == (person2)}") // true
+// person1 == person2: true
+```
+#### sealed classes , sealed interface
+Sealed classes and interfaces provide controlled inheritance of your class hierarchies.
+sealed class and its direct subclass will not appear outside
+once a module with a sealed interface is compiled, no new implementations can be created.
+Direct subclasses are classes that immediately inherit from their superclass.
+Indirect subclasses are classes that inherit from more than one level down from their superclass.
+
+##### Declare a sealed class or interface
+```
+// Create a sealed interface
+sealed interface Error
+
+// Create a sealed class that implements sealed interface Error
+sealed class IOError(): Error
+
+// Define subclasses that extend sealed class 'IOError'
+class FileReadError(val file: File): IOError()
+class DatabaseError(val source: DataSource): IOError()
+
+// Create a singleton object implementing the 'Error' sealed interface
+object RuntimeError : Error
+```
+The above code, we ensure no one can implementing or extending them in the client code
+library authors can be sure that they know all the possible error types and that other error types can't appear later.
+```
+sealed class Error(val message: String) {
+    class NetworkError : Error("Network failure")
+    class DatabaseError : Error("Database cannot be reached")
+    class UnknownError : Error("An unknown error has occurred")
+}
+
+fun main() {
+    val errors = listOf(Error.NetworkError(), Error.DatabaseError(), Error.UnknownError())
+    errors.forEach { println(it.message) }
+}
+// Network failure 
+// Database cannot be reached 
+// An unknown error has occurred
+```
+A sealed class itself is always an abstract class, and as a result, can't be instantiated directly. 
+So if we want sealed class, we need to use "object keyword" , eg object BaseError : Error()
+
+Better solution, use Enum instead of String 
+```
+enum class ErrorSeverity { MINOR, MAJOR, CRITICAL }
+
+sealed class Error(val severity: ErrorSeverity) {
+    class FileReadError(val file: File): Error(ErrorSeverity.MAJOR)
+    class DatabaseError(val source: DataSource): Error(ErrorSeverity.CRITICAL)
+    object RuntimeError : Error(ErrorSeverity.CRITICAL)
+    // Additional error types can be added here
+}
+```
+##### Sealed constructor visilibility (proected, private)
+```
+sealed class IOError {
+    // A sealed class constructor has protected visibility by default. It's visible inside this class and its subclasses
+    constructor() { /*...*/ }
+
+    // Private constructor, visible inside this class only.
+    // Using a private constructor in a sealed class allows for even stricter control over instantiation, enabling specific initialization procedures within the class.
+    private constructor(description: String): this() { /*...*/ }
+
+    // This will raise an error because public and internal constructors are not allowed in sealed classes
+    // public constructor(code: Int): this() {}
+}
+```
+##### Sealed interface + Enum
+enum classes can't extend a sealed class, or any other class. However, they can implement sealed interfaces:
+
+```
+sealed interface Error
+
+// enum class extending the sealed interface Error
+enum class ErrorType : Error {
+    FILE_ERROR, DATABASE_ERROR
+}
+```
+#### nested class vs Inner class vs subclass
+nested classes cannot access the data or functions of their superclasses. 
+Because they are kept in the background as static final.
+```
+class Outer {
+
+    val companyName: String = "Huawei"
+    private val companySecret: String = "Secret"
+
+    fun getSomething(): String = ""
+
+    class NestedClass {
+
+        fun printSomething() {
+
+            println("From Nested Class")
+            
+        }
+
+    }
+
+}
+```
+
+Inner class :  we can access the values and functions of our outer class in inner class.
+```
+class Outer2 {
+
+    val companyName: String = "Huawei"
+    private val companySecret: String = "Secret"
+
+    fun getSomething(): String = ""
+
+    inner class InnerClass {
+
+        fun printSomething() {
+            
+            println("From Inner Class")
+
+        }
+
+    }
+
+}
+```
+
+subclass (basically just a child class extend Outer2) Therefore ,it can put outside the class
+```
+// we put inside, which useful when the Parent is "sealed"
+class Outer2 {
+    class InnerClass : Outer2
+}
+Equivalent to
+class Outer2 {
+   
+}
+
+class InnerClass : Outer2 {
+
+}
+
+```
+
+#### Local Inner Class
+Local inner classes:
+Local inner classes are declared inside a block of code, such as a function or a method,
+and can access both local variables and members of the enclosing class. Here’s an example:
+```
+fun outerFunction() {
+    val outerMember: Int = 1
+
+    class Inner {
+        fun print() {
+            println("This is a local inner class with access to outerMember: $outerMember.")
+        }
+    }
+
+    val inner = Inner()
+    inner.print() // This is a local inner class with access to outerMember: 1.
+}
+```
+
+
 this is
 as
 by

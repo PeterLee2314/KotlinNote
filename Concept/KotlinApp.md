@@ -181,3 +181,187 @@ It takes a set of composables and arranges them in a consistent manner to create
 #### TextField (need state that track the input text)
 from material design, basic input field
 BasicField, free to make your own design
+
+#### rememberScrollState
+```
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier.verticalScroll(scrollState)
+            ) {
+```
+
+####  LazyColumn
+LazyColumn already have scroll state
+
+only load when we scroll
+two way to achieve it (itemsIndexed, items)
+itemsIndexed is simply a for-each, items is automatically generate all with defined size(500)
+```
+                itemsIndexed(
+                    listOf("This","Is","Jetpack","Compose")
+                ) {
+                    index: Int, item: String ->
+                    Text(
+                        text = "$item $index",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp)
+                    )
+                }
+                items(500) {
+                    Text(
+                        text = "Item $it",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp)
+                    )
+                }
+```
+
+#### ConstraintSet + ConstraintLayout
+start(left), end(right), top(top) ,bottom(bottom)
+    implementation(libs.androidx.constraintlayout.compose)
+    implementation(libs.androidx.constraintlayout)
+create reference for each composable we want to constraint
+define rule (ConstraintSet)
+make layout (ConstraintLayout)
+
+```
+            val constraints = ConstraintSet {
+                val greenBox = createRefFor("greenbox")
+                val redBox = createRefFor("redbox")
+
+                constrain(greenBox) {
+                    top.linkTo(parent.top) // top constraint of green box LINK TO parent TOP
+                    start.linkTo(parent.start)
+                    width = Dimension.value(100.dp)
+                    height = Dimension.value(100.dp)
+                }
+                constrain(redBox) {
+                    top.linkTo(parent.top)
+                    start.linkTo(greenBox.end)
+                    end.linkTo(parent.end)
+                    width = Dimension.value(100.dp)
+                    height = Dimension.value(100.dp)
+                }
+            }
+            ConstraintLayout(constraints, modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier
+                    .background(Color.Green)
+                    .layoutId("greenbox"))
+                Box(modifier = Modifier
+                    .background(Color.Red)
+                    .layoutId("redbox"))
+
+            }
+```
+
+It will place the redBox between start and parent end so its a middle, there will be empty white, so fill it
+use "width = Dimension.fillToConstraints" 
+``` 
+start.linkTo(greenBox.end)
+end.linkTo(parent.end)
+width = Dimension.value(100.dp)
+height = Dimension.value(100.dp)
+
+```
+make a horizontal chain, so all layout reference(greenBox,redBox) will have same group of rule set
+createHorizontalChain(greenBox,redBox, chainStyle = ChainStyle.Packed)
+
+guideline (transparent layout for ContraintLayout)   , which this guideline take (50% fraction of the screen)
+val guideline = createGuidelineFromTop(0.5f)
+when link to guideline, there will be a 50% transparent barrier and greenBox will start after the 50% of the screen 
+```
+constrain(greenBox) {
+    top.linkTo(guideline) //
+    start.linkTo(parent.start)
+    width = Dimension.value(100.dp)
+    height = Dimension.value(100.dp)
+}
+```
+![img.png](img/guidelineImg1.png)
+
+if simple Layout (row,col) , in xml/complex layout (use constraintlayout, significant performance issue)
+
+A chain is a group of views that are linked to each other with bi-directional position constraints. For example, 
+figure shows two views that both have a constraint to each other, thus creating a horizontal chain
+![img.png](img/chainImg.png)
+
+#### Effect Handlers
+Side Effect (escape the scope of composable function)
+"i" is one of the side effect, we dont know when the program recompose after button clicked, so its not inside composable
+use "effect handlers" instead
+```
+private var i = 0
+...
+        setContent {
+            var text by remember {
+                mutableStateOf("")
+            }
+
+            Button(onClick = {
+                text += "#"
+            }) {
+                i++
+                Text(text = text)
+            }
+        }
+```
+##### LaunchedEffect
+for CoroutineScope, we can do suspension 
+
+By default the LaunchedEffect will execute
+When "text" change, the LaunchedEffect will cancel the execution and Relaunch it with new Value
+```
+LaunchedEffect(key1 = text) {
+    delay(1000L)
+}
+```
+LaunchedEffect also good on animation 
+eg you are left click and right click picture, so the right click animation cancel and immediately execute left click
+when you click right and click left so fast
+
+##### rememberCoroutineScope (only use on callbacks eg onClick, onEventListener)
+why only on callbacks? because you can track it (WONT BECOME Side Effect), like you click one then it can change one, which is controllable 
+val scope = rememberCoroutineScope()
+```
+Button(onClick{
+    scope.launch {
+        delay(1000L)
+        println("Hello World")
+    }
+}) {
+
+}
+```
+##### rememberUpdatesState
+for splash screen, we use onTimeOut() to finish the splash screen
+However, onTimeout() inside LaunchedEffect may not linked to the updated onTimeout: () -> Unit function
+eg you set onTimeout with 3 second, then somehow you set it as 5 second, the onTimeout() inside LaunchedEffect will have no idea about the 5 second update, so
+just 3 second later, you out the splash
+
+Solution: val updatedOnTimeout by rememberUpdatesState(newValue = onTimeout)
+so the updatedOnTimeout will be updated when onTimeout changing 
+```
+fun demo(
+onTImeOut: () -> Unit
+) {
+     val updatedOnTimeout by rememberUpdatesState(newValue = onTimeout)
+     LaunchedEffect(key = true) {
+        delay(3000L)
+        updatedOnTimeout()
+     }
+}
+```
+
+##### DisposableEffect
+
+
+#### LifeCycleEventObserver
+to observe the current state the application is in (eg onPause, onStart, onStop)
