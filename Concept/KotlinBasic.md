@@ -1820,8 +1820,181 @@ eg interface Source<out T> (covariant)
 - <in T> : <? super T> + T as consumer (write-only)   supertype assign to subtype
 
 The <out T> , its read-only, can only return T, because it accept T's subtype , eg if T is Any, it accept (Number,String,Int...)
+Its valid to use T ,eg val a = T , or fun abc() : T, However not allow for setter
+- <In T> valid to setter only eg fun abc(t : T)
+```
+open class Track
+open class Audio : Track()
+class Song : Audio()
+```
+for <out T>
+```
+interface Retailer<out T> {
+    fun sell(): T
+}
+
+class TrackRetailer : Retailer<Track> {
+    override fun sell(): Track {
+        println("Sell track")
+        return Track()
+    }
+}
+
+class AudioRetailer : Retailer<Audio> {
+    override fun sell(): Audio {
+        println("Sell audio")
+        return Audio()
+    }
+}
+
+class SongRetailer : Retailer<Song> {
+    override fun sell(): Song {
+        println("Sell song")
+        return Song()
+    }
+}
+    val retailer1: Retailer<Track> = TrackRetailer()
+    val retailer2: Retailer<Track> = AudioRetailer()// It can compile because of out
+    val retailer3: Retailer<Track> = SongRetailer()// It can compile because of out
 ```
 
+for <in T>
+```
+interface Consumer<in T> {
+    fun buy(t:T)
+}
+
+class TrackConsumer : Consumer<Track> {
+override fun buy(t: Track) {
+println("Buy track")
+}
+}
+
+class AudioConsumer : Consumer<Audio> {
+override fun buy(t: Audio) {
+println("Buy audio")
+}
+}
+
+
+class SongConsumer : Consumer<Song> {
+override fun buy(t: Song) {
+println("Buy Song")
+}
+}
+
+    val consumer1: Consumer<Song> = TrackConsumer()
+    val consumer2: Consumer<Song> = AudioConsumer()
+    val consumer3: Consumer<Song> = SongConsumer()
+```
+#### Star-projections (*)
+Sometimes you want to say that you know nothing about the type argument, but you still want to use it in a safe way.
+
+For Foo<out T : TUpper>, where T is a covariant type parameter with the upper bound TUpper, Foo<*> is equivalent to Foo<out TUpper>. 
+This means that when the T is unknown you can safely read values of TUpper from Foo<*>.
+
+For Foo<in T>, where T is a contravariant type parameter, Foo<*> is equivalent to Foo<in Nothing>. 
+This means there is nothing you can write to Foo<*> in a safe way when T is unknown.
+
+For Foo<T : TUpper>, where T is an invariant type parameter with the upper bound TUpper, 
+Foo<*> is equivalent to Foo<out TUpper> for reading values and to Foo<in Nothing> for writing values.
+
+For example, if the type is declared as interface Function<in T, out U> you could use the following star-projections:
+Function<*, String> means Function<in Nothing, String>.
+Function<Int, *> means Function<Int, out Any?>.
+Function<*, *> means Function<in Nothing, out Any?>.
+
+#### Generic function
+```
+fun <T> singletonList(item: T): List<T> {
+    // ...
+}
+
+fun <T> T.basicToString(): String { // extension function
+    // ...
+}
+```
+To call a generic function, specify the type arguments at the call site after the name of the function:
+
+val l = singletonList<Int>(1)
+Type arguments can be omitted if they can be inferred from the context, so the following example works as well:
+
+val l = singletonList(1)
+
+
+#### Generic constraints
+contraints the value that pass 
+the type T must be subtype of Comparable<T>
+```
+fun <T : Comparable<T>> sort(list: List<T>) {  ... }
+```
+sort(listOf(1, 2, 3)) // OK. Int is a subtype of Comparable<Int>
+sort(listOf(HashMap<Int, String>())) // Error: HashMap<Int, String> is not a subtype of Comparable<HashMap<Int, String>>
+#### If more than 1 constraints (where)
+```
+fun <T> copyWhenGreater(list: List<T>, threshold: T): List<String>
+    where T : CharSequence,
+          T : Comparable<T> {
+    return list.filter { it > threshold }.map { it.toString() }
+}
+```
+T type must implement both CharSequence and Comparable.
+
+#### Definitely non-nullable types (Same as Java @NotNull)
+decalre generics follow with & Any
+eg T & Any // non-nullable
+A definitely non-nullable type must have a nullable upper bound.
+The most common use case for declaring definitely non-nullable types is when you want to override a Java method that 
+contains @NotNull as an argument. For example, consider the load() method:
+```
+//Java code
+import org.jetbrains.annotations.*;
+
+public interface Game<T> {
+    public T save(T x) {}
+    @NotNull
+    public T load(@NotNull T x) {}
+}
+```
+To override the load() method in Kotlin successfully, you need T1 to be declared as definitely non-nullable:
+
+```
+interface ArcadeGame<T1> : Game<T1> {
+    override fun save(x: T1): T1
+    // T1 is definitely non-nullable
+    override fun load(x: T1 & Any): T1 & Any
+}
+```
+#### Underscore operator for type arguments
+Use it to automatically infer a type of the argument when other types are explicitly specified
+```
+abstract class SomeClass<T> {
+    abstract fun execute() : T
+}
+
+class SomeImplementation : SomeClass<String>() {
+    override fun execute(): String = "Test"
+}
+
+class OtherImplementation : SomeClass<Int>() {
+    override fun execute(): Int = 42
+}
+
+object Runner {
+    inline fun <reified S: SomeClass<T>, T> run() : T {
+        return S::class.java.getDeclaredConstructor().newInstance().execute()
+    }
+}
+
+fun main() {
+    // T is inferred as String because SomeImplementation derives from SomeClass<String>
+    val s = Runner.run<SomeImplementation, _>()
+    assert(s == "Test")
+
+    // T is inferred as Int because OtherImplementation derives from SomeClass<Int>
+    val n = Runner.run<OtherImplementation, _>()
+    assert(n == 42)
+}
 ```
 
 this is

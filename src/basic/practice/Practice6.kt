@@ -6,5 +6,5 @@ fun main() {
 
     var strs2 = mutableListOf("A","B","C")
     //var list2 : MutableList<Any> = strs2 // invalid because MutalbeList<T> list is changeable
-
+    var a : Int
 }
