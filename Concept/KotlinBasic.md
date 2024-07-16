@@ -1542,6 +1542,287 @@ fun outerFunction() {
 }
 ```
 
+#### Generics
+generic types in Java are invariant, meaning that List<String> is not a subtype of List<Object>
+```
+// Java
+List<String> strs = new ArrayList<String>();
+
+// Java reports a type mismatch here at compile-time.
+List<Object> objs = strs;
+
+objs.add(1) // this is valid, but will have error
+```
+Also not valid in this case 
+Collection<Object>.addAll(Collection<String>) ,
+What if that Collection<Object> is Integer? , Invalid!!
+```
+void copyAll(Collection<Object> to, Collection<String> from) {
+    to.addAll(from);
+}
+```
+Solution: (the use of subtypes and supertypes)
+Then how about we allow to add all the subtypes or supertypes of the target
+```
+interface Collection<E> ... {
+    void addAll(Collection<? extends E> items);
+}
+
+void <T> copyAll(Collection<T> to, Collection<? extends T> from) {
+    to.addAll(from);
+}
+```
+##### wildcard type argument  VS type parameter <T>
+type parameter define what is the type during runtime, however not allow to use other type (no bounding)
+wildcard type argument allow supertype(super), subtype(extend) during runtime, allow to have up-bounding(extend) low-bounding(super)
+```
+eg <? Extend E> // valid if (?) of that parameter is subtype of E
+eg <? Super E> // valid if (?) of that parameter is supertype of E
+
+extend (subtype) , super(supertype)
+Then why Java can support it? because <? extend E> <? super String>
+
+eg <? extends E>  (You can read E's item not write it)
+```
+Collection<String> is a subtype of Collection<? extends Object>. 
+In other words, the wildcard with an extends-bound (upper bound) makes the type covariant.
+
+##### Covariant <? extend Object>, only allow to retrieve(read) elements from that Collection (Read only)
+supertype if store that subtype , only allow to read it not add it
+```
+Collection<String> strings = new ArrayList<>();
+strings.add("Hello");
+
+Collection<? extends Object> objects = strings;
+Object element = objects.iterator().next();
+objects.add(new Object());  // This line will cause a compilation error
+```
+because <? extends Object> that ? could be any like Integer, String, Double, etc, for sure you can't add anything
+but read it (Covariant)
+
+##### Contravariant  (assign a general type to a variable of a more specific type) (Write-only)
+reversely, if you can put items into the collection, it's okay to take a collection of Object "s" and put String "s" into it
+```
+List<Object> objects = new ArrayList<>();
+objects.add(new Object());
+
+List<? super String> strings = objects;
+strings.add("Hello");
+```
+because <? super String>, you limited the subtype could only be parent of String, eg Object
+so ? is impossible to be Integer, Double,etc . Because its the parent, it guarantee the parent ability is subset of String, like toString(), toHashCode()
+its like a Subset
+contravariance applies to adding elements to the collection. You can put elements into a List<? super String>, 
+but you cannot retrieve elements from it and assume they are of type String. (cant read Object)
+The type system prevents you from making such assumptions to maintain type safety.
+
+#####  PECS stands for Producer-Extends, Consumer-Super.
+Type safe != Immutable
+If you use a producer-object, say, List<? extends Foo>, you are not allowed to call add() or set() on this object,
+but this does not mean that it is immutable: for example, nothing prevents you from calling clear() to remove all the items from the list, 
+since clear() does not take any parameters at all.
+The only thing guaranteed by wildcards (or other types of variance) is type safety. Immutability is a completely different story.
+#### declaration-site variance:
+you can annotate the type parameter T of Source to make sure that it is only returned (produced) from members of Source<T>, 
+and never consumed. To do this, use the out modifier:
+
+##### Out (Covariant, used for Producer, READ ONLY) , In (Contravariant, used for Consumer, Write ONLY) , T (Invariant, both read/write)
+out T, mean the T can only used for Producer purpose, return (READ ONLY)
+```
+interface Source<out T> {
+    fun nextT(): T
+}
+
+fun demo(strs: Source<String>) {
+    val objects: Source<Any> = strs // This is OK, since T is an out-parameter
+    // ...
+}
+```
+in T, mean the T can only used for parameter , which the T can store supertype of T <? super T>
+, because Double is Number's super, we can store reference of instance of Number in a variable type of  Double
+```
+interface Comparable<in T> {
+    operator fun compareTo(other: T): Int
+}
+
+fun demo(x: Comparable<Number>) {
+    x.compareTo(1.0) // 1.0 has type Double, which is a subtype of Number
+    // Thus, you can assign x to a variable of type Comparable<Double>
+    val y: Comparable<Double> = x // OK!
+}
+```
+
+
+#### Consumer & Producer
+"consumer" and "producer" refer to the usage of a type parameter <T> within a class or interface.
+Consumer: Type parameter <T> is used as the parameter type of a function or method parameter  , eg fun abc(T) , 
+Producer : fun abc() { ... return T} , as the return type
+
+#### Conclusion (Subtype,SuperType relationship) VS (Generic Type )
+What is SubType, What is Super Type?
+Consider a class hierarchy with a Vehicle class as the supertype and Car and Motorcycle classes as subtypes.
+Car and Motorcycle are subtypes of Vehicle
+Vehicle is supertype (have common properties and behaviour)
+// supertype = subtype , eg Any = String // upcast
+// subtype = supertype  eg Double = (Dobule)Number // downcast
+##### Without Generic Type, everything valid
+```
+var animal: Animal? = null
+
+animal = Bug()      // 沒問題
+
+/*****************************/
+
+fun getAnimal(): Animal {
+    return Bug()    // 沒問題
+}
+
+/*****************************/
+
+val bug: Bug = Animal() // 如果這個指派合法，表示這個語言支援逆變
+
+
+```
+// Corgi ≤ Dog ≤ Animal
+
+open class Animal()
+open class Dog() : Animal()
+class Corgi() : Dog()
+若我們用一個 Dog 實體，指派給這三個類別，其狀況如下，只有指派給 Corgi 時會出事
+val animal: Animal = Dog()  // covariance  supertype = subtype
+val dog   : Dog    = Dog() type = type
+val corgi : Corgi  = Dog()  // Error!  , subtype = supertype // Invalid need casting manually
+但若是使用了 Genetic Type ，就只能指派給完全一樣的類別
+```
+val animals: ArrayList<Animal> = ArrayList<Dog>()  // Error!
+val dogs   : ArrayList<Dog>    = ArrayList<Dog>()
+val corgis : ArrayList<Corgi>  = ArrayList<Dog>()  // Error!
+```
+但是，因為 val animal: Animal = dog() 是成立的，所以我們也會希望 val ancenstors: ArrayList<Animal> = ArrayList<Dog>() 能成立，也能夠成立，也就是 維持繼承關係
+```
+val animals: ArrayList<Animal> = ArrayList<Dog>()  // 想要這個也合法
+val dogs   : ArrayList<Dog>    = ArrayList<Dog>()
+val Corgis : ArrayList<Corgi>  = ArrayList<Dog>()  // Error!
+
+
+```
+假設這裡有一個支援 Covariance 的類別 DogHandler，此時 Kotlin 會限制 DogHandler 只能實作 getter
+``` 
+interface Handler<out T> {
+    fun getInstance(): T?
+}
+
+class DogHandler : Handler<Dog> {
+    private var dog: Dog? = null
+
+    override fun getInstance(): Dog? {
+        return dog
+    }
+}
+```
+Why only getter? , because now val animalHandler: Handler<Animal> = DogHandler() is with type "Dog"
+```
+val animalHandler: Handler<Animal> = DogHandler()
+
+// scenario 1
+val dog = Dog()
+animalHandler.setInstance(dog)     // 可以
+
+// scenario 2
+val alien = Alien()
+animalHandler.setInstance(alien)   //  No
+```
+那 Getter 不會有問題嗎
+這裡的 animalHandler，指向的其實是一個 Handler<Dog> 的 instance
+在呼叫 animalHandler.getInstance() 的時候，其實是呼叫了 Handler<Dog>.getInstance()，所以其實是拿到一個 Dog instance
+但是，Kotlin 是支援 covariance 的，拿到的 instance 既是 Dog ，也同時是 Animal，所以沒有問題
+換句話說，animalHandler 其實也不知道實際拿到的 instance 是誰，但可以確定是得到一個 Animal 的 instance
+
+##### Generic Type with Contravariance
+```
+interface Handler<in T>{
+    fun setInstance(instance: T)    
+}
+
+
+class DogHandler: Handler<Dog> {
+    private var dog: Dog? = null
+
+    override fun setInstance(instance: Dog) {
+        this.dog = instance
+    }
+
+}
+```
+
+```
+val animalHandler: Handler<Animal> = DogHandler() // Error!
+val dogHandler   : Handler<Dog>    = DogHandler()
+val corgiHandler  : Handler<Corgi> = DogHandler() // OK!
+
+val corgi = Corgi()
+corgiHandler.setInstance(corgi)  // 沒有問題
+```
+如果 Getter 還在會發生什麼事
+```
+val corgiHandler : Handler<Corgi> = DogHandler()
+val corgi = corgiHandler.getInstance()
+```
+corgiHandler 指向的是 Handler<Dog>
+corgiHandler 呼叫 getInstance() 實際上是呼叫到 Handler<Dog>.getInstance()，所以你只會拿到 Dog 物件
+但依據 covariance (繼承關係) ，Corgi ≤ Dog，這個指派是不合法的
+##### Important 在呼叫 add(或其他 setter) 的時候，只能塞該類別及其子類。就跟沒有使用 in / out 的時候一樣
+```
+class Handler<T> { }     // 沒有使用 Variance 的情境
+
+val dogHandler: Handler<Dog> = Handler<Dog>()
+dogHandler.add(Animal()) // Type mismatch!
+dogHandler.add(Dog())    // OK
+dogHandler.add(Corgi())  // OK
+
+/******************************************/
+
+class Handler<in T> { }   // 使用 Contravariance
+
+val dogHandler: Handler<Dog> = Handler<Dog>()
+dogHandler.add(Animal())  // Type mismatch!
+dogHandler.add(Dog())     // OK
+dogHandler.add(Corgi())   // OK 
+```
+他實際影響的是 List<T1> 與 List<T2> 這兩個 Complex Type 的繼承關係，也就是這兩個類別的指派(assignment) 是否合法
+```
+class Handler<T> { }
+
+val dogHandler: Handler<Dog> = Handler<Animal>()  // Type mismatch!
+val dogHandler: Handler<Dog> = Handler<Corgi>()   // Type mismatch!
+
+/******************************************/
+
+class Handler<in T> { }
+
+val dogHandler: Handler<Dog> = Handler<Animal>() // 變合法了
+
+/******************************************/
+
+class Handler<out T> { }
+
+val dogHandler: Handler<Dog> = Handler<Corgi>() // 變合法了
+```
+##### For Generic Type Soruce<T> 
+Type safety refers to a programming language's ability to prevent or detect certain types of errors at compile-time,
+thereby reducing the likelihood of runtime errors.
+subtype, supertype no longer work because of Generics
+So tackle it by Declaration-site Variance
+eg interface Source<out T> (covariant)
+- <? extend T> : meaning an Object type (supertype) could possibly itself or its subtype, so the Compiler will understand the type of that Instance
+- <? super T>: meaning an Object type(subtype) could possibly itself(eg Double) of its supertype(eg Number)
+- <out T> : <? extend T> + T as producer(read-only)  subtype assign to supertype
+- <in T> : <? super T> + T as consumer (write-only)   supertype assign to subtype
+
+The <out T> , its read-only, can only return T, because it accept T's subtype , eg if T is Any, it accept (Number,String,Int...)
+```
+
+```
 
 this is
 as
