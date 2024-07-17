@@ -1997,6 +1997,136 @@ fun main() {
 }
 ```
 
+#### Enum class
+enum class RGB { RED, GREEN, BLUE}
+for(color in RGB.entries) 
+```
+.entries
+.valueOf
+.ordinal
+.name
+```
+
+#### reified type (get type, type checking, casting)
+In java, we cant pass the type in Generics , eg <T> and we pass String, Java compiler will not know its String but Object type
+Type Erasure (dk the type at compile time)
+parameter <T> when decompile it will become Object type, so the compiler cant determine what the type is it 
+Solution 1, pass the type too (However, Kotlin relection is not available)
+```
+fun main() {
+    makeSomething("Strts", String::class)
+}
+fun <T : Any> makeSomething(value : T, type : KClass<T>) {
+       println("$value $type")
+}
+```
+Solution, inline + reified
+```
+fun main() {
+    makeSomething("Strts", String::class)
+}
+inline fun <reified T : Any> makeSomething(value : T, type : KClass<T>) {
+    println("$value ${T::class.java.simpleName}")
+}
+```
+reified, replace type "T" into actual type,  find the type by inline 
+inline : copy the body of function to the place it used,  and meanwhile take the information of the caller(makeSomething("Shello")), and find its type
+so reified retain the information by the use of "inlining" the function to the body
+
+#### Generics <T>
+a function that use <T> , we need to specify the type on the function
+eg listOf<Int>(1,2,3).filterSth<Int>()  // <T> mean we need to pass <Int> after the function name filterSth
+The below function is useless, but it can prove we can CHANGE the TYPE (as T) or CHECK the TYPE (is T) by "reified" and "inline"
+because we solve the Type Erasure and know what is "T" refer to "Int"
+```
+inline fun <reified T> List<Any>.filterSth() : List<T> {
+    return this.filter { it is T }.map { it as T } 
+}
+```
+#### Inline value classes (for Wrapper)  (Basically a "inline" for class)
+Inline class always final, not allow extend other
+we want to wrap some value into a Wrapper for domain-specific type
+use "value" keyword
+```
+value class Password(private val s : String)
+SO 
+val password = Password("IamPassword") // it will not create instance but just a String passed to "password" variable
+```
+##### inline value classes VS typealias
+inline value classes is a new Type 
+typealias is just a new name with that type
+```
+typealias NameTypeAlias = String
+// NameTypeAlias is still type "String"
+value class NameInlineClass(val s: String)
+// NameInlineClass is type "NameInlineClass" but with a String value
+```
+##### by (provided by)  (trigger custom setValue, getValue operator method) OR trigger custom setter,getter
+val : have getter
+var : have setter/getter
+We dont need to specify getter/setter by default
+When using 'by' keyword, you are stating that getter/setter is provided elsewhere (delegate the job), meaning it provided "by" the function
+that comes after by keyword
+```
+by lazy for lazy loading properties
+by inject() // DI 
+```
+
+in Class, using "by" refer to other functions , not only Getter/Setter
+```
+class MyClass: SomeInterface by SomeImplementation, SomeOtherInterface
+```
+MyClass have Function from SomeInterface, and the detailed implementation is from "SomeImplementation"
+as for SomeOtherInterface, MyClass will override it by himself
+
+thisRef: Any? refer to the val "e"
+property: KProperty<*> refer to the property "p"
+value refer to "Hello"
+```
+val e = Example()
+println(e.p) // invokes getValue()
+e.p = "Hello" // invokes setValue() method in Delegate class
+
+Example.class
+class Exampel {
+    var p : String by Delegate() // it will find the return Type "String" function in Delegate()
+}
+Delegate.class
+class Delegate{
+    //override getValue,setValue
+    operator fun getValue(thisRef: Any? , property : KProperty<*>) : String {
+        return "the value is ${property.name}"
+    }
+    operator fun setValue(thisRef: Any? , property : KProperty<*>, value : String) {
+        return "the value is ${property.name}"
+    }
+    
+    
+}
+```
+
+With by, it can also use for "data class" which define method with lambda anonymous function
+So we no need to override it first, but define "bar" it during instantiation
+Which tell the compiler, hey I don't want to implement it, the implementation will provided by object myInterface
+```
+interface MyInterface {
+    fun bar()
+    fun foo() = "foo"
+}
+// we generally need to override bar inside MyInterfaceWrapper, however use "by" to delegate the class method
+value class MyInterfaceWrapper(val myInterface: MyInterface) : MyInterface by myInterface
+
+fun main() {
+    val my = MyInterfaceWrapper(object : MyInterface {
+        override fun bar() {
+            // body
+        }
+    })
+    println(my.foo()) // prints "foo"
+}
+```
+
+##### as (type cast)
 this is
 as
 by
