@@ -360,8 +360,199 @@ onTImeOut: () -> Unit
 }
 ```
 
-##### DisposableEffect
+##### DisposableEffect (for clean up)
+when we want to dispose something eg Observer, when the composable leaves the composition the DiposableEffect will triggered
+```
+val lifeCycleOwner = LocalLifecycleOwner.current // get current life cycle
+DisposableEffect(key1 = lifecycleOwner) {
+   val observer = LifecycleEventObserver { _, event -> 
+        if(event == Lifecycle.Event.ON_PAUSE) {
+            println("on pause called")
+        }
+   }
+   // add the observer
+   lifecycleOwner.lifecycle.addObserver(observer)
+   onDispose {
+    lifecycleOwner.lifecycle.removeObserver(observer)  // remove the observer when leaving the composition
+   }
+}
 
+```
 
 #### LifeCycleEventObserver
 to observe the current state the application is in (eg onPause, onStart, onStop)
+
+##### Side Effect 
+called whenever the composable is successfully recomposed
+```
+    SideEffect {
+        // non-compose code (not a state eg data from API) BUT we want to treat like a state
+        println("Called after every successful recomposition")
+    }
+```
+
+##### produceState  (produce some states that changes overtime)
+Similar to Flow
+```
+// it return a State<Int> 
+// it use "value" as the variable
+@Composable 
+fun produceStateDemo(countUpTo : Int) : State<Int> {
+    return produceState(initialValue = 0) {
+        while(value < countUpTo) {
+            delay(1000L)
+            value++
+        }
+    }
+}
+```
+
+
+##### Flow
+
+```
+@Composable 
+fun produceStateDemo(countUpTo : Int) : State<Int> {
+    return flow<Int> {
+        var value = 0
+        while(value < countUpTo) {
+            delay(1000L)
+            value++
+            emit(value) // insert a new value to the shared flow
+        }
+    }.collectAsState(initial = 0)
+}
+```
+
+##### derivedStateOf
+use it when you want to do something depend on State (eg calculation, concat)
+```
+fun DerivedStateOfExample() {
+    var counter by remember {
+        mutableStateOf(0)
+    }
+    // val counterText  = "Counter is $counter" // this line keep recompute when Text called
+    val counterText by derivedStateOf {
+     "Counter is $counter" // will cache it, and whenever changes happen, it will notify all composables that counterText updated, else use the cahed one only
+    }
+    Button(onClick = {counter++}) {
+        Text(text = counterText)
+    }
+}
+```
+
+##### snapshotFlow
+collectAsState (if you have a flow, then use this to get the flow in form of (以...的形式) a compose state)
+snapshotFlow (opposite, take compose state to construct the flow out of that emits value whenever the composed state changes)
+
+#### Flow
+Flow is a part of the Kotlin Coroutines library and is used for handling asynchronous streams of data in a reactive and non-blocking manner.
+It provides a convenient way to handle sequences of values that are emitted over time.
+
+
+#### Animation
+animateDpAsState give a dp State which have animation included
+rememberInfiniteTransition() (animateColor function to have infinite color changing)
+```
+            var sizeState by remember {
+                mutableStateOf(200.dp)
+            }
+            val size by animateDpAsState(
+                targetValue = sizeState,
+//                tween(
+//                    durationMillis = 3000, // duration
+//                    delayMillis = 300, // little delay after click
+//                    easing = LinearOutSlowInEasing
+//                )
+                keyframes {
+                    durationMillis = 5000
+                    sizeState at 0 using LinearEasing // begin state
+                    sizeState * 1.5f at 1000 using FastOutLinearInEasing // at 1000 milisecond, set value as *1.5
+                    sizeState * 2f at 5000 // then slowly increase to *2
+                }
+
+            )
+            
+            val infiniteTransition = rememberInfiniteTransition()
+            val color by infiniteTransition.animateColor(
+                initialValue = Color.Red,
+                targetValue = Color.Green,
+                animationSpec = infiniteRepeatable(
+                    tween(
+                        durationMillis = 2000
+                    ),
+                    repeatMode = RepeatMode.Reverse
+                ), label = ""
+            )
+            Box(modifier = Modifier
+                .size(size)
+                .background(color),
+                contentAlignment = Alignment.Center) 
+            {
+                    Button(onClick = {
+                        sizeState += 50.dp
+                    }) {
+                        Text("Increase Size")
+                    }
+
+            }
+```
+##### Animation
+use animateFloatAsState to play Animation, LaunchedEffect to only trigger the animation once
+Canvas to draw the shape, Text to display
+``` 
+@Composable
+fun CircularProgressBar(
+    percentage: Float,
+    number: Int,
+    fontSize : TextUnit = 28.sp,
+    radius: Dp = 50.dp,
+    color: Color = Color.Green,
+    strokeWidth: Dp = 8.dp,
+    animateDuration: Int = 1000,
+    animateDelay: Int = 0
+) {
+    var animationPlayed by remember {
+        mutableStateOf(false)
+    }
+    val currentPercentage = animateFloatAsState(
+        targetValue = if(animationPlayed) percentage else 0f, label = "",
+        animationSpec = tween(
+            durationMillis = animateDuration,
+            delayMillis = animateDelay
+        )
+    )
+    LaunchedEffect(key1 = true) {
+        animationPlayed = true
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(radius * 2f)
+    ){
+        Canvas(
+            modifier = Modifier
+                .size(radius * 2f)
+        ) {
+            // the green arc line
+            drawArc(
+                color = color,
+                -90f,
+                360 * currentPercentage.value, // SweepAngle where is the line draw stopped
+                useCenter = false, // no center line
+                style = Stroke(strokeWidth.toPx(), cap = StrokeCap.Round)
+            )
+        }
+        Text(text = (currentPercentage.value * number).toInt().toString(),
+            color = Color.Black,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Bold)
+    }
+}
+
+```
+
+##### aspect ratio (modifier)
+different phone have different height/width, whatever the width is , we will set same value for height 
+so if 1 -> it is a square
