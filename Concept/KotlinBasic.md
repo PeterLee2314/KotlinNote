@@ -2134,3 +2134,16 @@ Flow<List<String>>
 flow { emit(myData)}
 
 
+#### vararg variable
+rather than "var" , "vararg" accept many parameters
+then use "forEach" perform operations
+```
+    fun withArgs(vararg args: String): String {
+        return buildString {  // buildString is just string builder
+            append(route)
+            args.forEach { arg->
+                append("/$arg")
+            }
+        }
+    }
+```

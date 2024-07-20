@@ -633,3 +633,57 @@ eg modifier will have size(200.dp), so child if using "modifier" not "Modifier" 
 modifier = Modifier
 .size(200.dp)
 ```
+
+#### LaunchedEffect 
+infinite update by flag
+```
+    LaunchedEffect(key1 = currentTime, key2 = isTimerRunning) {
+        // if currentTime changes or isTimerRunning changes
+        // we run the code block, so here if true then execute the below
+        if(currentTime >= 0L && isTimerRunning) {
+            delay(100L)
+            currentTime -= 100L // here we change, so will trigger again
+            value = currentTime / totalTime.toFloat()
+        }
+    }
+```
+
+#### animateAsXXX
+we make the targetValue, for example 1f and 0f
+animationSpec will make the value 1f to 0f smoothly
+```
+    val alpha = animateFloatAsState(
+        targetValue = if(isOpen) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 300
+        )
+    )
+```
+#### scale(x,y) Modifier
+scale(1f, -1f) // eg (X = 360. Y = 150) -> (360,-150) // vertical flip
+
+#### graphicsLayer{}  modifier
+attirbute:
+transformOrigin = TransformOrigin(0.5f, 0f) // move pivot to 50% X, 0% Y
+rotationX = rotateX.value  // change the rotation  , eg (0 to -90)
+![img.png](img/Rotation.png)
+assume a plane, and flip on X-axis 
+0 to -90, flip down  , 
+-90 to 0, flip above
+##### Flip perspective
+![img.png](img/FlipPerspective.png)
+in Eye, when flip -90, it cant see A
+when flip 90, still can see A
+
+#### .alpha() Modifier
+if value<1 , no draw
+if value > 1, draw
+
+#### Nav host
+NavHost(navController, )
+navController, Navhost need to listen to changes and commands from that navController
+startDestination, 
+Jetpack Compose dont usually use graph, but specify routes (strings like url)
+composable() ,tell navHost how the screen look like
+
+#### contentAlignment vs Modifier.align
