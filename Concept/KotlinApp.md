@@ -556,3 +556,80 @@ fun CircularProgressBar(
 ##### aspect ratio (modifier)
 different phone have different height/width, whatever the width is , we will set same value for height 
 so if 1 -> it is a square
+
+##### BowWithConstraints (predefined Composable)
+provided by Jetpack Compose
+rather than us provide the width,height
+Jetpack can make view for us and return h,w
+constraints.maxWidth
+So that if we already defined a parent (its size and padding,etc)
+we can make our child and without guessing its size or using dp
+by Using the maximum height/width
+
+##### Offset(x,y)
+we just make a 2D offset, so that it can for other purpose eg (draw a Path)
+```
+Path drawing, the mediumColoredPoint5 can draw a very steep curve, because it even draw outside the boundary
+and we ignored the draw exceed the boundary, so that get a very steep curve
+        val mediumColoredPoint1 = Offset(0f, height * 0.3f)
+        val mediumColoredPoint2 = Offset(width * 0.1f, height * 0.35f)
+        val mediumColoredPoint3 = Offset(width * 0.4f, height * 0.05f)
+        val mediumColoredPoint4 = Offset(width * 0.75f, height * 0.7f)
+        val mediumColoredPoint5 = Offset(width * 1.4f, -height.toFloat())
+        
+        // draw a path (all below is Unit function) 
+        // Path() (create new instance)
+        // .apply (apply series of Path function on that instance)
+        val mediumColoredPath = Path().apply {
+            moveTo(mediumColoredPoint1.x, mediumColoredPoint1.y) // initial starting draw point
+            // we make an extension function "Path.standardQuadFromTo" and make use of "quadraticBezierTo (Path func)"
+            standardQuadFromTo(mediumColoredPoint1, mediumColoredPoint2)  
+            standardQuadFromTo(mediumColoredPoint2, mediumColoredPoint3)
+            standardQuadFromTo(mediumColoredPoint3, mediumColoredPoint4)
+            standardQuadFromTo(mediumColoredPoint4, mediumColoredPoint5)
+            lineTo(width.toFloat() + 100f, height.toFloat() + 100f)
+            lineTo(-100f, height.toFloat() + 100f)
+            close()
+        }
+        
+        // Draw path
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            drawPath(
+                path = mediumColoredPath,
+                color = feature.mediumColor // fill the color inside the path
+            )
+        }
+```
+The light color is the result 
+![img.png](img/pathResult.png)  
+Next time if we want a new color, just simply override below and draw a path again 
+(Without Row, Column, same level elements can overlap each other)
+
+
+##### Wrapper Data Class
+Data class is ususally for Wrapper as we know in Kotlin Basic
+by @DrawableRes, the return Int,Field or Method is a resource REFERENCE
+```
+data class BottomMenuContent(
+    val title: String,
+    @DrawableRes val iconId: Int  // we tell Jetpack this iconId is a drawable id (Then we can pass it to the Wrapper)
+)
+```
+
+##### by remember
+State, whenever updated will trigger the related function
+```
+    var selectedItemIndex by remember {
+        mutableStateOf(initialSelectedItemIndex)
+    }
+```
+#### Modifier
+if parent modifier is passed, all attribute will be used ,
+eg modifier will have size(200.dp), so child if using "modifier" not "Modifier" also have 200.dp size 
+``` 
+modifier = Modifier
+.size(200.dp)
+```
