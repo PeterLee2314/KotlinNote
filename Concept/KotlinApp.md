@@ -728,5 +728,46 @@ fun SplashScreen(navController: NavController) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Image(painter = painterResource(id = R.drawable.ic_launcher_foreground) , contentDescription = "foreground", modifier = Modifier.scale(scale.value))
     }
+} 
+```
+
+#### Hilt (DI library) (similar as MVC in spring) 
+Hilt will manage (Application, Module, Class which use the DI)
+We dont care about the Repository.class, because the creation of this class is from Module.kt
+
+Application Child + Module
+ViewModel (the model that use the Instance by Depencies Injection)
+
+WorkApplication must extend Application(), because the android app start, Application.class will execute first
+so the child of Application.class which is WorkApplication will start too. Annotation of @@HiltAndroidApp is needed
+
+Module is the place for the definition of getInstance alike function 
+as we need IWorkerRepository in WorkerViewModel, we make getRepository() function and @Provides keyword automatically inject into WorkerViewModel
+```
+//WorkerModule.kt
+@Module
+@InstallIn(SingletonComponent::class) // the hierarchy
+object WorkerModule {
+    @Singleton // the return type (always same reference)
+    @Provides
+    fun getRepository(): IWorkerRepository {
+        return WorkerRepostiory
+    }
 }
+```
+
+WorkerViewModel use Instance of IWorkerRepository, after @HiltViewModel and @Inject constructor 
+Hilt will inject the instance for WorkerViewModel, without the need of creating instance by ourself
+```
+//WorkerViewModel.kt
+@HiltViewModel
+class WorkerViewModel @Inject constructor(private val workerRepostitory: IWorkerRepository): viewModel() {
+    fun compressImage(uri: Uri, context:Context) {
+        workerRepostitory.compressImage(uri,context)
+    }
+}
+```
+Now the WorkerViewModel no longer by = WorkerViewModel but 
+```
+    val workerViewModel: WorkerViewModel = hiltViewModel() // so that this Model managed by Hilt too and instantiate repo object
 ```
