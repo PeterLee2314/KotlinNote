@@ -687,3 +687,46 @@ Jetpack Compose dont usually use graph, but specify routes (strings like url)
 composable() ,tell navHost how the screen look like
 
 #### contentAlignment vs Modifier.align
+
+#### OvershootInterpolator 超過原本size
+In animation, an interpolator determines how the animated values are interpolated or transitioned over time. 
+
+The OvershootInterpolator is a type of interpolator that adds an overshoot effect to the animation.
+The overshoot effect occurs when the animated value surpasses the target value momentarily before returning to it.
+This creates a visual effect of the animation "overshooting" its final position and then bouncing back.
+eg 0 to 5f -> 5f to 2f(targetValue)
+fraction of animation play ("it" in easing attribute of scale.animateTo)
+eg if you at 250millisecond at the animation(500 millis total), the fraction will be 50%(0.5)
+As for the tension in "OvershootInterpolator(2f)" , which in this case (2f)
+
+
+#### SplashScreen
+the Animation will go to targetValue(0.3f) , (0 to 0.3)
+the image will change by scale 0 to 0.3
+as for the animation, its easing 
+
+```
+@Composable
+fun SplashScreen(navController: NavController) {
+    val scale = remember {
+        Animatable(0f)
+    }
+    LaunchedEffect(key1 = Unit) {
+        scale.animateTo(
+            targetValue = 4f,
+            animationSpec = tween(
+                durationMillis = 1000,
+                easing = {
+                    OvershootInterpolator(2f).getInterpolation(it)
+                }
+            )
+        )
+        delay(1000L)
+        navController.navigate(Screen.MainScreen.route)
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Image(painter = painterResource(id = R.drawable.ic_launcher_foreground) , contentDescription = "foreground", modifier = Modifier.scale(scale.value))
+    }
+}
+```
