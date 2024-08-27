@@ -771,3 +771,641 @@ Now the WorkerViewModel no longer by = WorkerViewModel but
 ```
     val workerViewModel: WorkerViewModel = hiltViewModel() // so that this Model managed by Hilt too and instantiate repo object
 ```
+
+@AndroidEntryPoint
+
+#### Room (Database) (Library)
+
+#### Kotlin-parcelize
+
+#### suspend function
+
+#### ellipsize
+            android:ellipsize="end"
+
+#### ViewBinding (buildFeatures)
+import com.peter.simplenotesapp.databinding.ItemNoteBinding // because the xml is item_note.xml
+
+```
+class NoteAdapter(private val mNotes: List<Note>, private val listener: OnNoteClickListener): RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
+
+    interface OnNoteClickListener {
+        fun onNoteClick(note: Note)
+        fun onNoteLongClick(note: Note)
+    }
+
+    inner class ViewHolder(private val binding: ItemNoteBinding): RecyclerView.ViewHolder(binding.root) {
+        init {
+            binding.apply {
+                root.setOnClickListener {
+                    val position = adapterPosition
+                    if(position != RecyclerView.NO_POSITION) {
+                        val note = mNotes[position]
+                        listener.onNoteClick(note)
+                    }
+                }
+
+                root.setOnLongClickListener {
+                    val position = adapterPosition
+                    if(position != RecyclerView.NO_POSITION) {
+                        val note = mNotes[position]
+                        listener.onNoteClick(note)
+                    }
+                    true
+                }
+            }
+        }
+
+        fun bind(note: Note) {
+            // bind data to UI
+            binding.apply {
+                titleNote.text = note.title
+                contentNote.text = note.content
+                val formatter = SimpleDateFormat("dd/MM/yyyy")
+                dateNote.text = formatter.format(note.date)
+            }
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val binding = ItemNoteBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return ViewHolder(binding)
+    }
+
+    override fun getItemCount(): Int {
+        return mNotes.size
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        with(mNotes[position]) {
+            holder.bind(this)
+        }
+    }
+}
+```
+
+#### Error
+```
+Error inflating class androidx.fragment.app.FragmentContainerView
+
+solution: class MainActivity : AppCompatActivity()
+```
+
+#### NavHostController vs NavHostFragment
+
+
+#### Safe Arcs (Library)
+safely pass the data between fragments
+
+#### Let (for null checks)
+
+```
+private var number : Int? = null
+
+//wrong
+if(number != null) {
+    var number2 = number + 1 // this is not acceptable, because other thread might change number to null
+}
+
+//correct
+number?.let {
+    var number2 = it + 1  // when we call the let function, its simply store the number in "it", so number change during this block execution, it wont affect
+}
+
+val x = number?.let {
+    var number2 = it + 1 
+    number2
+}
+// x = Unit? (it stores the block)
+// x = Int? (because it store last line if have value) (its nullable if number is null)
+solve it by Elvis operator (?: 3)
+```
+#### also (similar for let) (with "it")
+fun getSqaured() = (i*i).also { i++} // squared it and also increase i by 1
+fun getSqaured() = (i*i).also { it} // inside also use "it", but getSquared() function will have the caller's result which is (i+i) 
+
+#### apply (modify the OBJECT) thats why use "this"
+```
+val intent = Intent().apply {
+    //this 
+    putExtra() // no need call Intent(), but simply the function of that object
+}
+// val intent : Intent (intent will store the object)
+```
+
+#### run (similar as apply) (but store according last line, not a object)
+```
+val intent = Intent().run {
+    //this 
+    putExtra() // no need call Intent(), but simply the function of that object
+    action = "" // action is Unit()
+}
+// val intent : Unit() (it cares the last line)
+```
+
+##### run (when you store last line) , apply (when you store the "this" object)
+
+##### let, apply often use
+##### also, run, with (rare use)
+```
+// with is same as Run
+with(Intent()) {
+    //this : Intent 
+}
+```
+
+#### filter
+```
+fun List<Shape>.customFilter(filterFunction: (Shape) -> Boolean): List<Shape> { 
+    //this refers to the caller of the customFilter
+} 
+```
+#### generics
+```
+fun <T> List<T>.customFilter(filterFunction(): (T) -> Boolean): List<T> {
+
+}
+```
+
+##### Triple<A, B, C>
+```
+// the ( ) part need to be exactly type of the declaration (Int, String, Boolean)
+var triple = Triple<Int, String, Boolean>(3, "hello", true)
+var triple = Triple<>(3, "hello", true) // valid too
+// can call by
+triple.first
+tripble.second
+triple.third 
+
+```
+##### Custom Triple
+"Any" , can be Any thing but not NULL, so make it Any mean its not null
+"Any?" , allow null
+
+```
+class CustomTriple<A: Any, B: Any, C: Any> (
+    var first: A,
+    var second: B,
+    var third: C
+) {
+
+}
+```
+
+#### !! (this is not equal to null)
+```
+number!! // crash if null
+```
+#### runCatching : Result
+```
+Handle With runCatching
+This is the Kotlin way of error handling where the runCatching context returns a Result class, 
+similar to that in Rust, represents either the success or failure of an operation.
+```
+
+```
+@Throws
+fun Calculate() {
+    throw ArithmeticException()
+}
+
+fun main() {
+    try {
+        Calculate()
+    } catch(e: Exception) {
+        println("ErrorCaught: $e")
+    }
+}
+```
+
+After rewrite it to runCatching
+```
+fun main() {
+    runCatching {
+        Calculate()
+    }.onFailure {
+        println("ErrorCaught: $it")
+    }
+}
+```
+We can even store as variable 
+```
+fun main() {
+    val result = runCatching {
+        Calculate()
+    }
+    result.onFailure {
+        println("ErrorCaught: $it")
+    }
+}
+```
+
+
+We can even store the result in Result<T> 
+```
+fun Calculate(number: Int):Result<Int> {
+  return if (number == 0) {
+        Result.failure(ArithmeticException())
+    } else {
+        Result.success(number)
+    }
+}
+
+
+fun main() {
+    val number = Calculate(0)
+    number.fold(
+        onSuccess = {
+            println(number)
+        },
+        onFailure = {
+            println("ErrorCaught: $it")
+        }
+    )
+}
+```
+
+#### fold vs reduce 
+both is return a accumulate result
+fold can return things that is not the type of caller 
+eg
+```
+listOf(1,2,3,4,5) , is type List<Integer>
+listOf(1,2,3,4,5).fold(StringBuilder()) {
+    str: StringBuilder(), i: Int ->
+    str.append(i).append(" ")
+}
+so the return value is "1 1 1", so its doesn't really match the caller(Int) type
+// public inline fun <T, R> Iterable<T>.fold(initial: R, operation: (acc: R, T) -> R): R {
+// T type have no relationship with return type R
+```
+However for reduce
+
+```
+listOf(1,2,3,4,5).reduce(0) { 
+    total, item -> 
+    total + item
+}
+// result is 3, and the StringBuilder is not possible, because "reduce" return (Int) or parent (Number)
+// public inline fun <S, T : S> Iterable<T>.reduce(operation: (acc: S, T) -> S): S {
+// T type have relationship with return Type S, because T: S
+```
+
+#### Publish gradle library for kotlin
+Gralde Project -> Task -> build setup -> wrapper
+publish to maven local
+build.gradle (library)
+```
+apply {plugin('maven-publish')}
+
+publishing {
+    publications {
+        mavenJava (MavenPublication) {
+            from components.java
+        }
+    }
+}
+```
+
+build.gradle (base that use the library)
+```
+repositories{
+    mavenLocal()
+}
+dependencies { 
+    compile "com.example:CustomLibrary:1.0-SNAPSHOT" // this come from the library build.gradle setting
+}
+```
+
+But the above mention, will not have source code of the library
+To have the source code
+build.gradle (library)
+```
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+    from sourceSets.main.kotlin
+}
+
+publishing {
+    publications {
+        mavenJava (MavenPublication) {
+            from components.java
+            
+            artifact sourceJar {
+                classifier "sources"
+            }
+        }
+    }
+}
+```
+
+#### out (read-only) & in (write-only) & T (no subtype)
+out (covariant), can only be Producer, but not Consumer, so not allow T as arguments, accept <? extends T> 
+in (contravariant), can only be Consumer, but not Producer, so not allow return as T, accept <? super T>
+for "in", it can write only, because the child we write
+
+```
+open class Weapon
+open class Rifle : Weapon()
+class SniperRifle : Rifle()
+
+```
+
+```
+class Case<out T> {
+    private val contents = mutableListOf<T>()
+    fun produce(): T = contents.last() // OK
+    fun consume(item: T) = contents.add(item) // Error
+}
+```
+So that with out T, which is <? extends T> , meaning child or T is allow to use the function
+eg 
+```
+fun useProducer(case: Case<Rifle>) {
+    // Produces Rifle and its subtypes
+    val rifle = case.produce()
+}
+
+useProducer(Case<SniperRifle>())               // OK  (child of Rifle)
+useProducer(Case<Rifle>())                     // OK (exactly Rifle class)
+useProducer(Case<Weapon>())                    // Error (its parent, not allow)
+```
+
+"in"
+
+```
+fun useConsumer(case: Case<Rifle>) {
+    // Consumes Rifle and its subtypes
+    case.consume(SniperRifle())
+}
+useConsumer(Case<SniperRifle>())               // Error          
+useConsumer(Case<Rifle>())                     // OK
+useConsumer(Case<Weapon>())                    // OK
+```
+
+for <T> it is more strict, only its own type is allow, but allow Producer and Consumer
+```
+useProducerConsumer(Case<SniperRifle>())       // Error
+useProducerConsumer(Case<Rifle>())             // OK
+useProducerConsumer(Case<Weapon>())            // Error
+```
+
+#### !! (guaranatee nullable is non-null)
+if we want to have null by default (because we must init it first), but we know its MUST NOT null at the end
+like at the END, we ensure its not NULL, and we don't want null, then we use !!
+```
+var email: String // this not accept null
+email = null // Null can not be a value of a non-null type String  ( compilation error.)
+
+var email: String?
+email = null
+println(email) // result is null
+
+println(email!!) // throw Exception if NULL (NullPointerException )
+
+```
+
+#### Context (abstract class) (but can pass current Acitivity or Application)
+many functions require the context of the work (eg layout file and images)
+layout Resources,
+layoutInflater (create a view with a view file in the resources), return actual view of that layout(xml)
+Context , have subclass(Activity, Application), we can pass Activity and Application as Context to function
+
+##### ApplicationContext
+refers to the whole Application and not affected by the Activity LifeCycle
+
+##### Activity Context 
+we can refer "this", like the current class is MainActivity: AppCompatActivity()
+Activity Context only live as long as the Activity does
+
+```
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+         binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.btnShowToast.setOnClickListener {
+            Toast(this).apply {
+                duration = Toast.LENGTH_LONG
+                view = CustomToastBinding.inflate(layoutInflater).root
+                show()
+            }
+        }
+    }
+}
+```
+
+#### binding.root
+typically a layout manager such as a LinearLayout or ConstraintLayout
+In Android, the view hierarchy refers to the way that views (i.e., UI widgets) are organized in the user interface of an app. 
+Each view occupies a specific position in the hierarchy and can have child views, which are positioned beneath it
+The view hierarchy is important because it determines how the views in an app are laid out and how they interact with each other.
+For example, if you have a button inside a LinearLayout, the LinearLayout will be the parent view of the button and will control 
+how the button is positioned within the layout.
+
+#### Coroutine
+```
+//GlobalScope == live as long as the app does
+GlobalScope.launch {
+    delay() // pause Coroutine, not the whole thread
+    println({"Hello, $Thread.currentThread().name}")
+}
+```
+
+#### suspend function
+suspend function, they can be executed within another suspend function OR inside a Coroutine
+so that can execute sequentially
+// the Result will be , after 6 seconds, the output of two Log appear
+after doNetworkCall, it do doNetworkCall2
+```
+GlobalScope.launch {
+    val networkCall = doNetworkCall()
+    val networkCall2 = doNetworkCall2()
+    Log.d(TAG,networkCall)
+    Log.d(TAG,networkCall2)
+}
+
+suspend fun doNetworkCall(): String {
+    delay(3000)
+    return "call arrive"
+}
+
+suspend fun doNetworkCall2(): String {
+    delay(3000)
+    return "call arrive2"
+}
+```
+#### Enum classes vs Sealed Classes
+Basically the same, but Enum is Constant, Sealed Classes is instance
+but Sealed Class allow data class, while Enum you must declare everything at parent
+
+Sealed interface is just simply a sealed class without any variable in the constructor, but also allow singleton object or data class child
+
+if child don't need behaviour and form of functions and variables -> Enum , else Sealed 
+
+but Enum class, allow to give array of Constant by HttpErrorEnum.values()
+HttpErrorEnum.values().forEach{::println}
+```
+sealed interface HttpError {
+    object Unauthorized: HttpError(401)  //singleton
+    object NotFound: HttpError(404)
+    data class Unauthorized(val reason: String): HttpError(401) // also work for data class
+}
+
+sealed class HttpError(val code: Int) {
+    object Unauthorized: HttpError(401)  //singleton
+    object NotFound: HttpError(404)
+    data class Unauthorized(val reason: String): HttpError(401) // also work for data class
+}
+
+enum class HttpErrorEnum(val code:Int) {
+    Unauthorized(401),
+    NotFound(404);
+}
+
+
+
+// to use it 
+val error: HttpError = HttpError.Unauthorized
+
+val errorEnum: HttpErrorEnum = HttpErrorEnum.Unauthorized
+
+when(error) {
+    HttpError.Unauthorized -> Unit,
+    HttpError.NotFound -> Unit
+}
+```
+
+#### Observable (LiveData, StateFlow, Flow, SharedFlow)
+TextView ("tvXXXX")
+LiveData
+How to Init those Flow, we use _XXXX for the variable and XXXX as getter
+```
+private val _liveData = MutableLiveData("Hello World")
+    val liveData: LiveData<String> = liveData
+    
+private val _stateFlow = MutableStateFlow("Hello World")
+    val stateFlow = _stateFlow.asStateFlow()
+    
+private val _sharedFlow = MutableSharedFlow<String>()
+    val sharedFlow = _stateFlow.asSharedFlow()
+```
+
+```
+viewModel.liveData.observe(this) {  // if fragments then "this" replaced by viewLifeCycleOwner
+    binding.tvLiveData.text = it // "it" is the String, because liveDats is String
+}
+```
+
+StateFlow (we use Coroutine, dont use launch to collect StateFlow)
+```
+lifeCycleScope.launchWhenStarted {
+    viewModel.stateFlow.collectLatest {
+        // this part basically same as above, we just have a extra lifeCycleScope.launchWhenStarted { }
+        binding.tvStateFlow.text = it
+    }
+}
+```
+##### StateFlow (hot-flow) & LiveData do the same, use StateFlow (can do a little bit more)
+- map the result easily
+- filter them
+- Flows are much easy to testable (because it use coroutine)
+
+hot-flow (keep emitting values, even if there are no collectors) 
+cold-flow (no emit values if no collector)
+
+collect (collectLatest block ,collect block)
+
+stateFlow will still emit(accept) values even no the above lifeCycle.... whole block (collector)
+
+##### Flow (unlike StateFlow that hold value, Flow just let value go and notice over a period of time)
+Flow work like function
+Flow will trigger it when the clicking happen, not execute it with a seperate function, like the above we have a init function to do 
+```
+// viewModel
+fun triggerFlow(): Flow<String> {
+    return flow {
+        repeat(5) {
+            emit("Item $it")
+            delay(1000L)
+        }
+    }
+}
+// main Activity
+binding.btnFlow.setOnClickListener {
+    lifeCycleScope.launch {
+        viewModel.triggerFlow().collectLatest {
+            binind.tvFlow.text = it  // because the data come from triggerFlow(): Flow<String>
+        }
+    }
+}
+
+```
+
+##### Flow (use lifeCycleScope.launch), StateFlow (use lifeCycleScope.launchWhenStarted{})
+when rotate, Flow does not contain State, so will back to default
+
+#### SharedFlow (dont provide init value) 
+SharedFlow is hot-flow (will emit value, even no collector)
+similar as State that send one-time event (eg snackbar or Toast)
+
+SharedFlow is for some one-time event handle (eg get api response that was an error and we want to show it)
+
+Below Example use StateFlow (so it will only work once)
+once clicked, the state saved, so Snackbar appear only Once
+BUT, when recreated, StateFlow will emit the value again, so Snackbar will suddenly appear again
+eg you clicked once and show the Snackbar, you rotate it and SnackBar appear again when using StateFlow
+Therefore, SharedFlow come into place that show only-once, and no matter recreate behaviour happened like rotation
+```
+lifeCycleScope.launchWhenStarted {
+    viewModel.stateFlow.collectLatest {
+        Snackbar(
+            binding.root,
+            it,
+            Snackbar.LENGTH_LONG
+        ).show()
+    }
+}
+```
+
+
+```
+// viewModel  (we use viewModelScope, not lifeCycleScope)
+
+fun triggerSharedFlow() {
+    viewModelScope.launch {
+        _sharedFlow.emit("Shared Flow")
+    }
+}
+
+// main Activity
+lifeCycleScope.launchWhenStarted {
+    viewModel.sharedFlow.collectLatest {
+        Snackbar(
+            binding.root,
+            it,
+            Snackbar.LENGTH_LONG
+        ).show()
+    }
+}
+```
+sharedFlow , no need "flow {}" builder, but simply a variable of SharedFlow and then ".emit(sth)" and then add to observer
+observe the sharedFlow library , when click -> triggerSharedFlow() executed -> 
+
+LiveData( similar as StateFlow, need observer)
+StateFlow(one click only)
+Flow (no state save, when recreated, it can click again, no need observe but coroutine launch and then collectLatest)
+sharedFlow (validate sth when click, it can click as many time as you want, need observer, but no need value defined as first)
+
+Use case
+LiveData & StateFlow (save the state with one-time button until activity die, it will try to recreate it , when recreate function  happen)
+- thats why dialog when rotate will appear again, or rotate, then still the same Text
+Flow (Timer)
+sharedFlow (validate something, so that collectLatest change of that SharedFlow and trigger navController to nav to other page)
+
+
+#### viewModelScope vs lifeCycleScope
